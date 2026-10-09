@@ -556,7 +556,7 @@ async function sendBroadcast() {
   const status = document.getElementById('broadcastStatus');
   status.textContent = '⏳ Envoi...';
   try {
-    const r = await fetch('/api/admin/broadcast', {
+    const r = await fetch('/admin/api/admin/broadcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
