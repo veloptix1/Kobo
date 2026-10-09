@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kobo Admin</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%230A1F44'/><circle cx='50' cy='50' r='32' fill='%23FFA500'/><text x='50' y='66' font-size='40' text-anchor='middle' fill='%230A1F44' font-weight='bold'>K</text></svg>">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -20,10 +18,8 @@
     --muted: #6b7280;
     --border: #e5e7eb;
   }
-  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 30px; -webkit-user-select: none; user-select: none; }
+  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 30px; }
   input, textarea, select { -webkit-user-select: text; user-select: text; }
-
-  /* LOADER */
   .loader { position: fixed; inset: 0; z-index: 9999; background: var(--kobo-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; transition: opacity .5s, visibility .5s; }
   .loader.hidden { opacity: 0; visibility: hidden; }
   .loader-logo { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 1px; }
@@ -31,48 +27,32 @@
   .spinner { width: 46px; height: 46px; border: 4px solid rgba(255,255,255,.2); border-top-color: var(--kobo-gold); border-radius: 50%; animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-  .anim { opacity: 0; animation: fadeInUp .35s ease forwards; }
-
-  /* HEADER */
-  .header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark)); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.2); padding-top: max(14px, env(safe-area-inset-top)); }
+  .header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark)); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
   .header-logo-wrap { display: flex; align-items: center; gap: 10px; }
-  .header-logo-wrap img { width: 36px; height: 36px; border-radius: 10px; background: #fff; padding: 3px; object-fit: contain; }
   .logo { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; }
   .logo .badge-admin { background: linear-gradient(135deg, var(--kobo-gold), var(--kobo-orange)); color: #fff; font-size: 9px; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: .5px; font-weight: 800; }
   .btn-exit { background: rgba(255,255,255,.15); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   .btn-exit svg { stroke: #fff; }
-
-  /* TABS */
   .tabs { background: #fff; padding: 8px 10px; display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 64px; z-index: 99; -ms-overflow-style: none; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tab { padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; background: #f7faf8; color: var(--muted); border: none; cursor: pointer; font-family: inherit; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: all .2s; position: relative; }
-  .tab svg { stroke: currentColor; }
+  .tab { padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; background: #f7faf8; color: var(--muted); border: none; cursor: pointer; font-family: inherit; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: all .2s; }
   .tab.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; box-shadow: 0 3px 10px rgba(255,107,0,.3); }
   .tab .tab-badge { background: var(--kobo-danger); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 8px; min-width: 18px; text-align: center; display: none; }
   .tab .tab-badge.show { display: inline-block; }
-
-  /* CONTENT */
   .content { padding: 16px; max-width: 800px; margin: 0 auto; }
   .panel { display: none; }
   .panel.active { display: block; }
-
-  /* STATS */
   .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-  .stat-box { background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); border-left: 4px solid var(--kobo-gold); animation: fadeInUp .4s ease forwards; opacity: 0; }
+  .stat-box { background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); border-left: 4px solid var(--kobo-gold); animation: fadeInUp .4s ease forwards; }
   .stat-box:nth-child(2) { border-color: var(--kobo-orange); }
   .stat-box:nth-child(3) { border-color: var(--kobo-green); }
   .stat-box:nth-child(4) { border-color: #3b82f6; }
   .stat-box .lbl { font-size: 10.5px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: .3px; margin-bottom: 6px; }
   .stat-box .val { font-size: 20px; font-weight: 800; color: var(--text); }
-
-  /* TOOLBAR */
   .admin-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
   .admin-toolbar h2 { font-size: 17px; font-weight: 800; color: var(--kobo-dark); }
-  .btn-add { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; box-shadow: 0 3px 10px rgba(255,107,0,.3); transition: transform .15s; }
-  .btn-add:active { transform: scale(.95); }
-
-  /* CARDS */
-  .item-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05); display: flex; align-items: flex-start; gap: 12px; animation: fadeInUp .35s ease forwards; opacity: 0; }
+  .btn-add { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; box-shadow: 0 3px 10px rgba(255,107,0,.3); }
+  .item-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05); display: flex; align-items: flex-start; gap: 12px; animation: fadeInUp .35s ease forwards; }
   .item-card .ic-img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 22px; }
   .item-card .ic-body { flex: 1; min-width: 0; }
   .item-card .ic-name { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
@@ -80,100 +60,50 @@
   .item-card .ic-meta .dot { color: #d1d5db; }
   .item-card .ic-desc { font-size: 12px; color: #4b5563; line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #f3f4f6; }
   .item-card .ic-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
-
-  .icon-btn { width: 32px; height: 32px; border-radius: 9px; background: #f7faf8; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s, transform .15s; }
-  .icon-btn:active { transform: scale(.9); }
-  .icon-btn.edit svg { stroke: var(--kobo-orange); }
-  .icon-btn.edit:hover { background: rgba(255,107,0,.1); }
-  .icon-btn.delete svg { stroke: var(--kobo-danger); }
-  .icon-btn.delete:hover { background: rgba(239,68,68,.1); }
-  .icon-btn.check svg { stroke: #166534; }
-  .icon-btn.check:hover { background: rgba(16,185,129,.15); }
-  .icon-btn.close-x svg { stroke: var(--kobo-danger); }
-  .icon-btn.view svg { stroke: #3b82f6; }
-  .icon-btn.view:hover { background: rgba(59,130,246,.1); }
-  .icon-btn.ban svg { stroke: var(--kobo-danger); }
-
+  .icon-btn { width: 32px; height: 32px; border-radius: 9px; background: #f7faf8; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
   .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: .3px; }
   .badge.green { background: rgba(16,185,129,.15); color: #166534; }
   .badge.orange { background: rgba(255,107,0,.15); color: var(--kobo-orange); }
   .badge.red { background: rgba(239,68,68,.15); color: var(--kobo-danger); }
   .badge.blue { background: rgba(59,130,246,.15); color: #2563eb; }
   .badge.gray { background: rgba(107,114,128,.15); color: #4b5563; }
-  .badge.gold { background: rgba(255,165,0,.15); color: #B45309; }
-  .badge.vip { background: linear-gradient(135deg, rgba(147,51,234,.15), rgba(217,70,239,.15)); color: #9333EA; }
-
-  /* FILTERS */
   .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; -ms-overflow-style: none; scrollbar-width: none; }
   .filter-row::-webkit-scrollbar { display: none; }
   .filter-chip { padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #fff; border: 1.5px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; white-space: nowrap; }
   .filter-chip.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border-color: transparent; }
-
-  .search-input { padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border); font-family: inherit; font-size: 13px; max-width: 180px; outline: none; }
-  .search-input:focus { border-color: var(--kobo-gold); }
-  .search-full { width: 100%; max-width: 100%; margin-bottom: 12px; }
-
-  /* EMPTY */
-  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-  .empty svg { stroke: #d1d5db; margin-bottom: 10px; }
-
-  /* MODAL */
-  .modal-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .3s; backdrop-filter: blur(3px); }
+  .search-full { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border); font-family: inherit; font-size: 13px; outline: none; margin-bottom: 12px; }
+  .search-full:focus { border-color: var(--kobo-gold); }
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; background: #fff; border-radius: 14px; }
+  .modal-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .3s; }
   .modal-overlay.open { opacity: 1; pointer-events: auto; }
-  .modal { background: #fff; width: 100%; max-width: 520px; border-radius: 24px 24px 0 0; padding: 20px 20px 28px; transform: translateY(100%); transition: transform .4s cubic-bezier(.4,0,.2,1); max-height: 92vh; overflow-y: auto; padding-bottom: max(28px, env(safe-area-inset-bottom)); }
+  .modal { background: #fff; width: 100%; max-width: 520px; border-radius: 24px 24px 0 0; padding: 20px 20px 28px; transform: translateY(100%); transition: transform .4s cubic-bezier(.4,0,.2,1); max-height: 92vh; overflow-y: auto; }
   .modal-overlay.open .modal { transform: translateY(0); }
-  .modal-handle { width: 42px; height: 5px; border-radius: 5px; background: #d1d5db; margin: 0 auto 16px; }
   .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
   .modal-title { font-size: 18px; font-weight: 800; color: var(--kobo-dark); }
   .modal-close { width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .modal-close svg { stroke: var(--muted); }
-
-  /* FORM */
   .form-group { margin-bottom: 14px; }
   .form-group label { display: block; font-size: 12.5px; font-weight: 700; color: var(--kobo-dark); margin-bottom: 6px; }
-  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: #f7faf8; outline: none; transition: border-color .2s, background .2s; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: #f7faf8; outline: none; }
   .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--kobo-gold); background: #fff; }
   .form-group textarea { resize: vertical; min-height: 80px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .form-check { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
   .form-check input { width: auto; }
   .form-check label { margin: 0; font-size: 13px; font-weight: 600; }
-
-  .btn-primary, .btn-danger, .btn-warn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .15s; }
-  .btn-primary { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; box-shadow: 0 4px 14px rgba(255,107,0,.3); }
-  .btn-primary:active { transform: scale(.97); }
-  .btn-primary svg { stroke: #fff; }
-  .btn-danger { background: linear-gradient(135deg, #b91c1c, #dc2626); color: #fff; box-shadow: 0 4px 14px rgba(185,28,28,.3); }
-  .btn-danger:active { transform: scale(.97); }
+  .btn-primary, .btn-danger, .btn-warn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; }
+  .btn-danger { background: linear-gradient(135deg, #b91c1c, #dc2626); color: #fff; }
   .btn-warn { background: #f3f4f6; color: #374151; }
-  .btn-warn:active { transform: scale(.97); }
-  .btn-row { display: flex; gap: 8px; margin-top: 8px; }
-  .btn-row > button { flex: 1; }
-
-  /* CONFIG */
   .config-group { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-  .config-group-title { font-size: 12.5px; font-weight: 800; color: var(--kobo-dark); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 12px; }
   .config-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
   .config-row:last-child { border-bottom: none; }
   .config-row .cr-info { flex: 1; min-width: 0; }
   .config-row .cr-label { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
   .config-row .cr-cle { font-size: 10.5px; color: var(--muted); font-family: monospace; }
-  .config-row input { width: 100px; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 14px; font-weight: 700; text-align: right; font-family: inherit; outline: none; background: #f7faf8; }
-  .config-row input:focus { border-color: var(--kobo-gold); background: #fff; }
-
-  /* SKELETON */
-  .sk-item { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-  .sk-line { height: 12px; border-radius: 6px; background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; margin-bottom: 8px; }
-  @keyframes shimmer { to { background-position: -200% 0; } }
-  .sk-line.w1 { width: 40%; height: 16px; }
-  .sk-line.w2 { width: 70%; }
-
-  /* TOAST */
+  .config-row input { width: 120px; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 14px; font-weight: 700; text-align: right; font-family: inherit; outline: none; background: #f7faf8; }
   .toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(20px); background: var(--kobo-dark); color: #fff; padding: 12px 22px; border-radius: 30px; font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: all .3s; z-index: 1000; display: flex; align-items: center; gap: 8px; max-width: 90%; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .toast svg { stroke: var(--kobo-gold); flex-shrink: 0; }
   .toast.error { background: #b91c1c; }
-  .toast.error svg { stroke: #fff; }
 </style>
 </head>
 <body>
@@ -188,59 +118,27 @@
     <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#FFA500,#FF6B00);display:flex;align-items:center;justify-content:center;font-weight:900;color:#0A1F44;font-size:18px;">K</div>
     <div class="logo">Kobo <span class="badge-admin">Admin</span></div>
   </div>
-  <button class="btn-exit" onclick="logout()">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
-    </svg>
-  </button>
+  <button class="btn-exit" onclick="location.reload()">⟳</button>
 </header>
 
 <nav class="tabs" id="tabs">
-  <button class="tab active" data-tab="stats">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Stats
-  </button>
-  <button class="tab" data-tab="retraits">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/></svg>
-    Retraits
-    <span class="tab-badge" id="retraitsBadge"></span>
-  </button>
-  <button class="tab" data-tab="tasks">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-    Tâches
-  </button>
-  <button class="tab" data-tab="users">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-    Users
-  </button>
-  <button class="tab" data-tab="parrainage">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Parrainage
-  </button>
-  <button class="tab" data-tab="settings">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    Réglages
-  </button>
-  <button class="tab" data-tab="broadcast">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-    Annonce
-  </button>
+  <button class="tab active" data-tab="stats">📊 Stats</button>
+  <button class="tab" data-tab="retraits">💸 Retraits <span class="tab-badge" id="retraitsBadge"></span></button>
+  <button class="tab" data-tab="tasks">🎯 Tâches</button>
+  <button class="tab" data-tab="users">👥 Users</button>
+  <button class="tab" data-tab="parrainage">🤝 Parrainage</button>
+  <button class="tab" data-tab="settings">⚙️ Réglages</button>
+  <button class="tab" data-tab="broadcast">📢 Annonce</button>
 </nav>
 
 <main class="content">
-
-  <!-- STATS -->
   <div class="panel active" id="panel-stats">
     <div class="stats-grid" id="statsGrid"></div>
   </div>
 
-  <!-- RETRAITS -->
   <div class="panel" id="panel-retraits">
-    <div class="admin-toolbar">
-      <h2>Retraits</h2>
-      <span class="badge orange" id="retraitsPendingBadge">—</span>
-    </div>
-    <input type="text" class="search-input search-full" id="retraitsSearch" placeholder="🔍 Rechercher..." oninput="renderRetraits()">
+    <div class="admin-toolbar"><h2>Retraits</h2><span class="badge orange" id="retraitsPendingBadge">—</span></div>
+    <input type="text" class="search-full" id="retraitsSearch" placeholder="🔍 Rechercher..." oninput="renderRetraits()">
     <div class="filter-row" id="retraitsFilters">
       <button class="filter-chip active" data-filter="pending">En attente</button>
       <button class="filter-chip" data-filter="paid">Payés</button>
@@ -250,232 +148,171 @@
     <div id="retraitsList"></div>
   </div>
 
-  <!-- TASKS -->
   <div class="panel" id="panel-tasks">
-    <div class="admin-toolbar">
-      <h2>Tâches</h2>
-      <button class="btn-add" onclick="openTaskModal()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Nouvelle
-      </button>
-    </div>
-    <input type="text" class="search-input search-full" id="tasksSearch" placeholder="🔍 Rechercher une tâche..." oninput="renderTasks()">
+    <div class="admin-toolbar"><h2>Tâches</h2><button class="btn-add" onclick="openTaskModal()">➕ Nouvelle</button></div>
+    <input type="text" class="search-full" id="tasksSearch" placeholder="🔍 Rechercher..." oninput="renderTasks()">
     <div id="tasksList"></div>
   </div>
 
-  <!-- USERS -->
   <div class="panel" id="panel-users">
-    <div class="admin-toolbar">
-      <h2>Utilisateurs</h2>
-      <span class="badge blue" id="usersCountBadge">—</span>
-    </div>
-    <input type="text" class="search-input search-full" id="usersSearch" placeholder="🔍 Rechercher par nom, pseudo, ID..." oninput="renderUsers()">
-    <div class="filter-row" id="usersFilters">
-      <button class="filter-chip active" data-filter="all">Tous</button>
-      <button class="filter-chip" data-filter="active">Actifs</button>
-      <button class="filter-chip" data-filter="banned">Bannis</button>
-      <button class="filter-chip" data-filter="rich">Solde > 1000</button>
-    </div>
+    <div class="admin-toolbar"><h2>Utilisateurs</h2><span class="badge blue" id="usersCountBadge">—</span></div>
+    <input type="text" class="search-full" id="usersSearch" placeholder="🔍 Rechercher..." oninput="renderUsers()">
     <div id="usersList"></div>
   </div>
 
-  <!-- PARRAINAGE -->
   <div class="panel" id="panel-parrainage">
-    <div class="admin-toolbar">
-      <h2>Réseau de parrainage</h2>
-    </div>
+    <div class="admin-toolbar"><h2>Réseau de parrainage</h2></div>
     <div class="stats-grid" id="parrainStats"></div>
-    <input type="text" class="search-input search-full" id="parrainSearch" placeholder="🔍 Rechercher un parrain..." oninput="renderParrainage()">
-    <div class="filter-row" id="parrainFilters">
-      <button class="filter-chip active" data-filter="all">Tous</button>
-      <button class="filter-chip" data-filter="top">Top 20</button>
-    </div>
+    <input type="text" class="search-full" id="parrainSearch" placeholder="🔍 Rechercher..." oninput="renderParrainage()">
     <div id="parrainList"></div>
   </div>
 
-  <!-- SETTINGS -->
   <div class="panel" id="panel-settings">
-    <div class="admin-toolbar">
-      <h2>Paramètres du bot</h2>
-      <button class="btn-add" onclick="saveAllSettings()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        Enregistrer
-      </button>
-    </div>
-    <input type="text" class="search-input search-full" id="settingsSearch" placeholder="🔍 Rechercher un paramètre..." oninput="renderSettings()">
+    <div class="admin-toolbar"><h2>Paramètres</h2><button class="btn-add" onclick="saveAllSettings()">💾 Enregistrer</button></div>
+    <input type="text" class="search-full" id="settingsSearch" placeholder="🔍 Rechercher..." oninput="renderSettings()">
     <div id="settingsList"></div>
   </div>
 
-  <!-- BROADCAST -->
   <div class="panel" id="panel-broadcast">
-    <div class="admin-toolbar">
-      <h2>📢 Annonce à tous les users</h2>
-    </div>
+    <div class="admin-toolbar"><h2>📢 Annonce aux users</h2></div>
     <div class="config-group">
       <div class="form-group">
-        <label>Message à envoyer</label>
-        <textarea id="broadcastMsg" rows="5" placeholder="Écris ton message ici..." style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;background:#f7faf8;outline:none;"></textarea>
+        <label>Message</label>
+        <textarea id="broadcastMsg" rows="5" placeholder="Ton message..."></textarea>
       </div>
-      <div style="font-size:11.5px;color:var(--muted);margin-bottom:14px;">
-        ⚠️ Le message sera envoyé à <b>TOUS les utilisateurs actifs</b> via le bot. Utilise les <b>*gras*</b> et <b>_italique_</b> Markdown.
-      </div>
-      <button class="btn-primary" onclick="sendBroadcast()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>
-        Envoyer à tous
-      </button>
-      <div style="margin-top:12px;font-size:12px;color:var(--muted);" id="broadcastStatus"></div>
+      <button class="btn-primary" onclick="sendBroadcast()">📢 Envoyer à tous</button>
+      <div style="margin-top:12px;font-size:12px;color:#6b7280;" id="broadcastStatus"></div>
     </div>
   </div>
-
 </main>
 
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
-  <div class="modal" id="modal">
-    <div class="modal-handle"></div>
+  <div class="modal">
     <div class="modal-head">
       <div class="modal-title" id="modalTitle">Titre</div>
-      <button class="modal-close" onclick="closeModal()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div id="modalContent"></div>
   </div>
 </div>
 
-<div class="toast" id="toast">
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-  <span id="toastText">—</span>
-</div>
+<div class="toast" id="toast"><span id="toastText">—</span></div>
 
 <script>
-// ========= CONFIG =========
-// Ces valeurs sont injectées par le backend (voir api/admin/config.js)
-const sb = supabase.createClient('https://xbptlbcrxtcyzrrsahqs.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhicHRsYmNyeHRjeXpycnNhaHFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzU0NjIsImV4cCI6MjEwNzExMTQ2Mn0.QbF0ry9BcTyB6dVtBzPOmXO5rJs5nZQWKYmLo9Gbz2M');
+// ============================================================
+// CONFIG — Utilise l'API Vercel (service_role en sécurité)
+// ============================================================
+const API = '/api/admin/data';
 
-let DATA = { retraits: [], tasks: [], users: [], settings: [], referrals: [] };
+async function apiGet(resource) {
+  const r = await fetch(`${API}?resource=${resource}`);
+  return r.json();
+}
+async function apiSend(resource, method, body) {
+  const r = await fetch(`${API}?resource=${resource}`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+let DATA = { retraits: [], tasks: [], users: [], settings: [] };
 let RETRAIT_FILTER = 'pending';
-let USERS_FILTER = 'all';
-let PARRAIN_FILTER = 'all';
 
-// ========= INIT =========
+// ============================================================
+// INIT
+// ============================================================
 (async function init() {
   try {
-    const [retraits, tasks, users, settings, referrals] = await Promise.all([
-      sb.from('withdrawals').select('*, users(first_name, username, telegram_id, balance)').order('created_at', { ascending: false }).limit(200),
-      sb.from('tasks').select('*').order('id', { ascending: false }),
-      sb.from('users').select('*').order('created_at', { ascending: false }).limit(500),
-      sb.from('settings').select('*').order('key'),
-      sb.from('referrals').select('*, referrer:referrer_id(first_name, username), referred:referred_id(first_name, username)').order('created_at', { ascending: false }).limit(500)
+    const [retraits, tasks, users, settings] = await Promise.all([
+      apiGet('withdrawals'),
+      apiGet('tasks'),
+      apiGet('users'),
+      apiGet('settings'),
     ]);
     DATA.retraits = retraits.data || [];
     DATA.tasks = tasks.data || [];
     DATA.users = users.data || [];
     DATA.settings = settings.data || [];
-    DATA.referrals = referrals.data || [];
 
     await loadStats();
-    renderRetraits(); renderTasks(); renderUsers(); renderSettings(); renderParrainage();
-    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 300);
+    renderRetraits();
+    renderTasks();
+    renderUsers();
+    renderParrainage();
+    renderSettings();
+
+    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 200);
   } catch (e) {
     console.error(e);
-    document.getElementById('loader').innerHTML = '<div style="color:red;padding:20px;">Erreur de chargement</div>';
+    document.getElementById('loader').innerHTML = '<div style="color:#fff;padding:20px;text-align:center;">Erreur de chargement : ' + e.message + '</div>';
   }
 })();
 
-// ========= TABS =========
+// ============================================================
+// TABS
+// ============================================================
 document.getElementById('tabs').addEventListener('click', (e) => {
-  const t = e.target.closest('.tab');
-  if (!t) return;
+  const t = e.target.closest('.tab'); if (!t) return;
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
 });
 
-// ========= STATS =========
+// ============================================================
+// STATS
+// ============================================================
 async function loadStats() {
   const grid = document.getElementById('statsGrid');
-  grid.innerHTML = '<div class="sk-item"><div class="sk-line w1"></div><div class="sk-line w2"></div></div>';
-
-  const totalUsers = DATA.users.length;
-  const bannedUsers = DATA.users.filter(u => u.is_banned).length;
-  const pendingWD = DATA.retraits.filter(r => r.status === 'pending').length;
-  const totalKobo = DATA.users.reduce((s, u) => s + Number(u.balance || 0), 0);
-  const totalEarned = DATA.users.reduce((s, u) => s + Number(u.total_earned || 0), 0);
-  const totalWithdrawn = DATA.users.reduce((s, u) => s + Number(u.total_withdrawn || 0), 0);
+  grid.innerHTML = '<div class="stat-box"><div class="lbl">Chargement...</div><div class="val">—</div></div>';
+  const s = await apiGet('stats');
 
   const stats = [
-    { lbl: 'Utilisateurs', val: totalUsers },
-    { lbl: 'Bannis', val: bannedUsers },
-    { lbl: 'Retraits en attente', val: pendingWD },
-    { lbl: 'Kobo en circulation', val: Math.round(totalKobo) },
-    { lbl: 'Total distribué', val: Math.round(totalEarned) },
-    { lbl: 'Total retiré', val: Math.round(totalWithdrawn) }
+    { l: 'Utilisateurs', v: s.totalUsers || 0 },
+    { l: 'Bannis', v: s.bannedUsers || 0 },
+    { l: 'Retraits en attente', v: s.pendingWD || 0 },
+    { l: 'Kobo en circulation', v: Math.round(s.totalKobo || 0) },
+    { l: 'Total distribué', v: Math.round(s.totalEarned || 0) },
+    { l: 'Total retiré', v: Math.round(s.totalWithdrawn || 0) },
   ];
-
-  grid.innerHTML = stats.map((s, i) => `
-    <div class="stat-box" style="animation-delay:${i * .05}s">
-      <div class="lbl">${s.lbl}</div>
-      <div class="val">${s.val}</div>
-    </div>
-  `).join('');
+  grid.innerHTML = stats.map(x => `<div class="stat-box"><div class="lbl">${x.l}</div><div class="val">${x.v}</div></div>`).join('');
 
   const badge = document.getElementById('retraitsBadge');
-  if (pendingWD > 0) { badge.textContent = pendingWD; badge.classList.add('show'); }
+  if (s.pendingWD > 0) { badge.textContent = s.pendingWD; badge.classList.add('show'); }
   else badge.classList.remove('show');
 }
 
-// ========= RETRAITS =========
+// ============================================================
+// RETRAITS
+// ============================================================
 function renderRetraits() {
   const list = document.getElementById('retraitsList');
   const q = (document.getElementById('retraitsSearch')?.value || '').toLowerCase().trim();
+  let f = RETRAIT_FILTER === 'all' ? DATA.retraits : DATA.retraits.filter(r => r.status === RETRAIT_FILTER);
+  if (q) f = f.filter(r => { const u = r.users || {}; return (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || (r.destination||'').toLowerCase().includes(q); });
 
-  let filtered = RETRAIT_FILTER === 'all' ? DATA.retraits : DATA.retraits.filter(r => r.status === RETRAIT_FILTER);
-  if (q) filtered = filtered.filter(r => {
+  const pending = DATA.retraits.filter(r => r.status === 'pending').length;
+  document.getElementById('retraitsPendingBadge').textContent = pending + ' en attente';
+
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucun retrait'); return; }
+  list.innerHTML = f.map(r => {
     const u = r.users || {};
-    return (u.first_name || '').toLowerCase().includes(q)
-      || (u.username || '').toLowerCase().includes(q)
-      || (r.destination || '').toLowerCase().includes(q)
-      || (r.method || '').toLowerCase().includes(q);
-  });
-
-  const pendingCount = DATA.retraits.filter(r => r.status === 'pending').length;
-  document.getElementById('retraitsPendingBadge').textContent = pendingCount + ' en attente';
-
-  if (filtered.length === 0) { list.innerHTML = emptyBox('Aucun retrait'); return; }
-
-  list.innerHTML = filtered.map((r, i) => {
-    const u = r.users || {};
-    const statusInfo = { pending: { l: 'En attente', c: 'orange' }, paid: { l: 'Payé', c: 'green' }, rejected: { l: 'Rejeté', c: 'red' }, processing: { l: 'En cours', c: 'blue' } }[r.status] || { l: r.status, c: 'gray' };
-    return `
-      <div class="item-card" style="animation-delay:${i * .03}s">
-        <div class="ic-img">💸</div>
-        <div class="ic-body">
-          <div class="ic-name">${escapeHtml(u.first_name || 'Utilisateur')} <span class="badge ${statusInfo.c}">${statusInfo.l}</span></div>
-          <div class="ic-meta">
-            <span>💰 ${r.amount_kobo} Kobo</span>
-            <span class="dot">•</span>
-            <span style="color:var(--kobo-orange);font-weight:700;">${r.amount_target} ${r.target_currency}</span>
-          </div>
-          <div class="ic-meta">
-            <span>📱 ${escapeHtml(r.method)}</span>
-            <span class="dot">•</span>
-            <span>📍 ${escapeHtml(r.destination)}</span>
-          </div>
-          <div class="ic-meta" style="font-size:10.5px;"><span>${timeAgo(r.created_at)} · ID #${r.id}</span></div>
-        </div>
-        <div class="ic-actions">
-          ${r.status === 'pending' ? `
-            <button class="icon-btn check" onclick="wdAction(${r.id}, 'paid')" title="Marquer payé">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </button>
-            <button class="icon-btn close-x" onclick="wdAction(${r.id}, 'rejected')" title="Refuser">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          ` : ''}
-        </div>
+    const s = { pending: {l:'En attente',c:'orange'}, paid: {l:'Payé',c:'green'}, rejected: {l:'Rejeté',c:'red'} }[r.status] || {l:r.status,c:'gray'};
+    return `<div class="item-card">
+      <div class="ic-img">💸</div>
+      <div class="ic-body">
+        <div class="ic-name">${escapeHtml(u.first_name||'Utilisateur')} <span class="badge ${s.c}">${s.l}</span></div>
+        <div class="ic-meta"><span>💰 ${r.amount_kobo} Kobo</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">${r.amount_target} ${r.target_currency}</span></div>
+        <div class="ic-meta"><span>📱 ${escapeHtml(r.method)}</span><span class="dot">•</span><span>📍 ${escapeHtml(r.destination)}</span></div>
+        <div class="ic-meta" style="font-size:10.5px;"><span>${timeAgo(r.created_at)} · ID #${r.id}</span></div>
       </div>
-    `;
+      <div class="ic-actions">${r.status === 'pending' ? `
+        <button class="icon-btn" onclick="wdAction(${r.id}, 'paid')" title="Payé">✅</button>
+        <button class="icon-btn" onclick="wdAction(${r.id}, 'rejected')" title="Rejeter">❌</button>
+      ` : ''}</div>
+    </div>`;
   }).join('');
 }
 
@@ -486,67 +323,54 @@ document.getElementById('retraitsFilters').addEventListener('click', (e) => {
 });
 
 async function wdAction(id, status) {
-  const label = status === 'paid' ? 'paiement' : 'refus';
-  if (!confirm(`Confirmer le ${label} ?`)) return;
-  const { error } = await sb.from('withdrawals').update({ status, processed_at: new Date().toISOString() }).eq('id', id);
-  if (error) return showToast('Erreur : ' + error.message, true);
-  showToast('Retrait ' + (status === 'paid' ? 'marqué payé' : 'refusé'));
-  const idx = DATA.retraits.findIndex(r => r.id === id);
-  if (idx >= 0) DATA.retraits[idx].status = status;
+  if (!confirm(`Confirmer ${status === 'paid' ? 'le paiement' : 'le refus'} ?`)) return;
+  const r = await apiSend('withdrawal', 'PATCH', { id, status });
+  if (r.error) return showToast('Erreur : ' + r.error, true);
+  showToast('OK');
+  const idx = DATA.retraits.findIndex(x => x.id === id); if (idx >= 0) DATA.retraits[idx].status = status;
   renderRetraits(); loadStats();
 }
 
-// ========= TASKS =========
+// ============================================================
+// TÂCHES
+// ============================================================
 function renderTasks() {
   const list = document.getElementById('tasksList');
   const q = (document.getElementById('tasksSearch')?.value || '').toLowerCase().trim();
-  let filtered = DATA.tasks;
-  if (q) filtered = filtered.filter(t => (t.title || '').toLowerCase().includes(q));
-  if (filtered.length === 0) { list.innerHTML = emptyBox('Aucune tâche'); return; }
-
-  list.innerHTML = filtered.map((t, i) => `
-    <div class="item-card" style="animation-delay:${i * .03}s">
-      <div class="ic-img">${t.is_active ? '🎯' : '🚫'}</div>
-      <div class="ic-body">
-        <div class="ic-name">${escapeHtml(t.title)} ${t.is_active ? '' : '<span class="badge red">Inactif</span>'}</div>
-        <div class="ic-meta">
-          <span class="badge blue">${t.type}</span>
-          <span class="dot">•</span>
-          <span style="color:var(--kobo-orange);font-weight:700;">💰 ${t.reward} Kobo</span>
-          ${t.daily_limit > 1 ? `<span class="dot">•</span><span>${t.daily_limit}/jour</span>` : ''}
-        </div>
-        ${t.description ? `<div class="ic-desc">${escapeHtml(t.description)}</div>` : ''}
-      </div>
-      <div class="ic-actions">
-        <button class="icon-btn edit" onclick="openTaskModal(${t.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-        <button class="icon-btn view" onclick="toggleTask(${t.id})">${t.is_active ? '⏸️' : '▶️'}</button>
-        <button class="icon-btn delete" onclick="deleteTask(${t.id})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
-      </div>
+  let f = DATA.tasks;
+  if (q) f = f.filter(t => (t.title||'').toLowerCase().includes(q));
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucune tâche'); return; }
+  list.innerHTML = f.map(t => `<div class="item-card">
+    <div class="ic-img">${t.is_active ? '🎯' : '🚫'}</div>
+    <div class="ic-body">
+      <div class="ic-name">${escapeHtml(t.title)} ${t.is_active ? '' : '<span class="badge red">Inactif</span>'}</div>
+      <div class="ic-meta"><span class="badge blue">${t.type}</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">💰 ${t.reward} Kobo</span></div>
+      ${t.description ? `<div class="ic-desc">${escapeHtml(t.description)}</div>` : ''}
     </div>
-  `).join('');
+    <div class="ic-actions">
+      <button class="icon-btn" onclick="openTaskModal(${t.id})">✏️</button>
+      <button class="icon-btn" onclick="toggleTask(${t.id})">${t.is_active ? '⏸️' : '▶️'}</button>
+      <button class="icon-btn" onclick="deleteTask(${t.id})">🗑️</button>
+    </div>
+  </div>`).join('');
 }
 
 function openTaskModal(id = null) {
-  const t = id ? DATA.tasks.find(x => x.id === id) : { title: '', description: '', type: 'one_time', reward: 0, link: '', channel_id: '', daily_limit: 1, is_active: true };
-  openModal(id ? 'Modifier la tâche' : 'Nouvelle tâche', `
+  const t = id ? DATA.tasks.find(x => x.id === id) : { title:'', description:'', type:'one_time', reward:0, link:'', channel_id:'', daily_limit:1, is_active:true };
+  openModal(id ? 'Modifier' : 'Nouvelle tâche', `
     <div class="form-group"><label>Titre</label><input id="tTitle" value="${escapeHtml(t.title)}"></div>
-    <div class="form-group"><label>Description</label><textarea id="tDesc">${escapeHtml(t.description || '')}</textarea></div>
+    <div class="form-group"><label>Description</label><textarea id="tDesc">${escapeHtml(t.description||'')}</textarea></div>
     <div class="form-row">
-      <div class="form-group"><label>Type</label>
-        <select id="tType">${['one_time','daily','channel_join','watch_ad','share_link','signup','custom'].map(v => `<option ${t.type === v ? 'selected' : ''}>${v}</option>`).join('')}</select>
-      </div>
-      <div class="form-group"><label>Récompense (Kobo)</label><input type="number" id="tReward" value="${t.reward}"></div>
+      <div class="form-group"><label>Type</label><select id="tType">${['one_time','daily','channel_join','watch_ad','share_link','signup','custom'].map(v => `<option ${t.type===v?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Récompense Kobo</label><input type="number" id="tReward" value="${t.reward}"></div>
     </div>
-    <div class="form-group"><label>Lien</label><input id="tLink" value="${escapeHtml(t.link || '')}"></div>
+    <div class="form-group"><label>Lien</label><input id="tLink" value="${escapeHtml(t.link||'')}"></div>
     <div class="form-row">
-      <div class="form-group"><label>ID Canal</label><input id="tChannel" value="${escapeHtml(t.channel_id || '')}"></div>
-      <div class="form-group"><label>Limite / jour</label><input type="number" id="tDaily" value="${t.daily_limit || 1}"></div>
+      <div class="form-group"><label>ID Canal</label><input id="tChannel" value="${escapeHtml(t.channel_id||'')}"></div>
+      <div class="form-group"><label>Limite/jour</label><input type="number" id="tDaily" value="${t.daily_limit || 1}"></div>
     </div>
-    <div class="form-check"><input type="checkbox" id="tActive" ${t.is_active ? 'checked' : ''}><label for="tActive">Active</label></div>
-    <button class="btn-primary" onclick="saveTask(${id || 'null'})">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-      Enregistrer
-    </button>
+    <div class="form-check"><input type="checkbox" id="tActive" ${t.is_active?'checked':''}><label for="tActive">Active</label></div>
+    <button class="btn-primary" onclick="saveTask(${id || 'null'})">💾 Enregistrer</button>
   `);
 }
 
@@ -562,89 +386,54 @@ async function saveTask(id) {
     is_active: document.getElementById('tActive').checked
   };
   if (!payload.title) return showToast('Titre requis', true);
-  const { error } = id ? await sb.from('tasks').update(payload).eq('id', id) : await sb.from('tasks').insert(payload);
-  if (error) return showToast('Erreur : ' + error.message, true);
-  showToast(id ? 'Tâche mise à jour' : 'Tâche créée');
-  closeModal(); await reloadTasks();
+  const r = id ? await apiSend('task', 'PATCH', { id, ...payload }) : await apiSend('task', 'POST', payload);
+  if (r.error) return showToast('Erreur : ' + r.error, true);
+  showToast(id ? 'Modifié' : 'Créée');
+  closeModal();
+  const tasks = await apiGet('tasks'); DATA.tasks = tasks.data || [];
+  renderTasks();
 }
 
 async function toggleTask(id) {
   const t = DATA.tasks.find(x => x.id === id); if (!t) return;
-  await sb.from('tasks').update({ is_active: !t.is_active }).eq('id', id);
-  await reloadTasks();
+  await apiSend('task', 'PATCH', { id, is_active: !t.is_active });
+  const tasks = await apiGet('tasks'); DATA.tasks = tasks.data || [];
+  renderTasks();
 }
 
 async function deleteTask(id) {
-  if (!confirm('Supprimer cette tâche ?')) return;
-  await sb.from('tasks').delete().eq('id', id);
-  showToast('Tâche supprimée'); await reloadTasks();
+  if (!confirm('Supprimer ?')) return;
+  await apiSend('task', 'DELETE', { id });
+  showToast('Supprimée');
+  const tasks = await apiGet('tasks'); DATA.tasks = tasks.data || [];
+  renderTasks();
 }
 
-async function reloadTasks() {
-  const { data } = await sb.from('tasks').select('*').order('id', { ascending: false });
-  DATA.tasks = data || []; renderTasks();
-}
-
-// ========= USERS =========
+// ============================================================
+// USERS
+// ============================================================
 function renderUsers() {
   const list = document.getElementById('usersList');
   const q = (document.getElementById('usersSearch')?.value || '').toLowerCase().trim();
-  let filtered = DATA.users;
-
-  if (USERS_FILTER === 'active') filtered = filtered.filter(u => !u.is_banned);
-  else if (USERS_FILTER === 'banned') filtered = filtered.filter(u => u.is_banned);
-  else if (USERS_FILTER === 'rich') filtered = filtered.filter(u => Number(u.balance) > 1000);
-
-  if (q) filtered = filtered.filter(u =>
-    (u.first_name || '').toLowerCase().includes(q)
-    || (u.username || '').toLowerCase().includes(q)
-    || String(u.telegram_id).includes(q)
-  );
-
+  let f = DATA.users;
+  if (q) f = f.filter(u => (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || String(u.telegram_id).includes(q));
   document.getElementById('usersCountBadge').textContent = DATA.users.length + ' users';
-
-  if (filtered.length === 0) { list.innerHTML = emptyBox('Aucun utilisateur'); return; }
-
-  list.innerHTML = filtered.slice(0, 100).map((u, i) => `
-    <div class="item-card" style="animation-delay:${i * .02}s">
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucun utilisateur'); return; }
+  list.innerHTML = f.slice(0, 100).map(u => `
+    <div class="item-card">
       <div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">${escapeHtml((u.first_name || u.username || '?').charAt(0).toUpperCase())}</div>
       <div class="ic-body">
-        <div class="ic-name">
-          ${escapeHtml(u.first_name || 'Utilisateur')}
-          ${u.is_banned ? '<span class="badge red">Banni</span>' : ''}
-          ${u.is_admin ? '<span class="badge orange">Admin</span>' : ''}
-        </div>
-        <div class="ic-meta">
-          <span>@${escapeHtml(u.username || '—')}</span>
-          <span class="dot">•</span>
-          <span>ID ${u.telegram_id}</span>
-        </div>
-        <div class="ic-meta">
-          <span style="color:var(--kobo-orange);font-weight:800;">💰 ${u.balance} Kobo</span>
-          <span class="dot">•</span>
-          <span>retirable ${u.withdrawable_balance || 0}</span>
-        </div>
+        <div class="ic-name">${escapeHtml(u.first_name || 'Utilisateur')} ${u.is_banned ? '<span class="badge red">Banni</span>' : ''} ${u.is_admin ? '<span class="badge orange">Admin</span>' : ''}</div>
+        <div class="ic-meta"><span>@${escapeHtml(u.username || '—')}</span><span class="dot">•</span><span>ID ${u.telegram_id}</span></div>
+        <div class="ic-meta"><span style="color:var(--kobo-orange);font-weight:800;">💰 ${u.balance} Kobo</span><span class="dot">•</span><span>retirable ${u.withdrawable_balance || 0}</span></div>
       </div>
       <div class="ic-actions">
-        <button class="icon-btn edit" onclick="editUser(${u.telegram_id})" title="Modifier">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        </button>
-        <button class="icon-btn ban" onclick="toggleBan(${u.telegram_id})" title="${u.is_banned ? 'Débannir' : 'Bannir'}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-        </button>
-        <button class="icon-btn delete" onclick="deleteUser(${u.telegram_id})" title="Supprimer">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>
-        </button>
+        <button class="icon-btn" onclick="editUser(${u.telegram_id})" title="Modifier">✏️</button>
+        <button class="icon-btn" onclick="toggleBan(${u.telegram_id})" title="${u.is_banned ? 'Débannir' : 'Bannir'}">${u.is_banned ? '🔓' : '🚫'}</button>
       </div>
     </div>
   `).join('');
 }
-
-document.getElementById('usersFilters').addEventListener('click', (e) => {
-  const c = e.target.closest('.filter-chip'); if (!c) return;
-  document.querySelectorAll('#usersFilters .filter-chip').forEach(x => x.classList.remove('active'));
-  c.classList.add('active'); USERS_FILTER = c.dataset.filter; renderUsers();
-});
 
 function editUser(id) {
   const u = DATA.users.find(x => x.telegram_id === id); if (!u) return;
@@ -652,47 +441,40 @@ function editUser(id) {
     <div class="form-group"><label>Prénom</label><input id="euName" value="${escapeHtml(u.first_name || '')}"></div>
     <div class="form-group"><label>Solde Kobo</label><input type="number" id="euBalance" value="${u.balance}"></div>
     <div class="form-group"><label>Solde retirable</label><input type="number" id="euWithdrawable" value="${u.withdrawable_balance || 0}"></div>
-    <div class="form-check"><input type="checkbox" id="euAdmin" ${u.is_admin ? 'checked' : ''}><label for="euAdmin">Administrateur</label></div>
-    <div class="form-check"><input type="checkbox" id="euBanned" ${u.is_banned ? 'checked' : ''}><label for="euBanned">Banni</label></div>
-    <button class="btn-primary" onclick="saveUser(${id})">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-      Enregistrer
-    </button>
+    <div class="form-check"><input type="checkbox" id="euAdmin" ${u.is_admin?'checked':''}><label>Admin</label></div>
+    <div class="form-check"><input type="checkbox" id="euBanned" ${u.is_banned?'checked':''}><label>Banni</label></div>
+    <button class="btn-primary" onclick="saveUser(${id})">💾 Enregistrer</button>
   `);
 }
 
 async function saveUser(id) {
   const payload = {
+    telegram_id: id,
     first_name: document.getElementById('euName').value.trim(),
     balance: Number(document.getElementById('euBalance').value),
     withdrawable_balance: Number(document.getElementById('euWithdrawable').value),
     is_admin: document.getElementById('euAdmin').checked,
     is_banned: document.getElementById('euBanned').checked
   };
-  const { error } = await sb.from('users').update(payload).eq('telegram_id', id);
-  if (error) return showToast('Erreur : ' + error.message, true);
-  showToast('Utilisateur mis à jour'); closeModal(); await reloadUsers();
+  const r = await apiSend('user', 'PATCH', payload);
+  if (r.error) return showToast('Erreur : ' + r.error, true);
+  showToast('Mis à jour'); closeModal();
+  const users = await apiGet('users'); DATA.users = users.data || [];
+  renderUsers();
 }
 
 async function toggleBan(id) {
   const u = DATA.users.find(x => x.telegram_id === id); if (!u) return;
   if (!confirm(u.is_banned ? 'Débannir ?' : 'Bannir ?')) return;
-  await sb.from('users').update({ is_banned: !u.is_banned }).eq('telegram_id', id);
-  showToast(u.is_banned ? 'Débanni' : 'Banni'); await reloadUsers();
+  await apiSend('user', 'PATCH', { telegram_id: id, is_banned: !u.is_banned });
+  showToast(u.is_banned ? 'Débanni' : 'Banni');
+  const users = await apiGet('users'); DATA.users = users.data || [];
+  renderUsers(); loadStats();
 }
 
-async function deleteUser(id) {
-  if (!confirm('Supprimer cet utilisateur ? Action irréversible.')) return;
-  await sb.from('users').delete().eq('telegram_id', id);
-  showToast('Utilisateur supprimé'); await reloadUsers();
-}
-
-async function reloadUsers() {
-  const { data } = await sb.from('users').select('*').order('created_at', { ascending: false }).limit(500);
-  DATA.users = data || []; renderUsers(); loadStats();
-}
-
-// ========= PARRAINAGE =========
+// ============================================================
+// PARRAINAGE
+// ============================================================
 function renderParrainage() {
   const list = document.getElementById('parrainList');
   const stats = document.getElementById('parrainStats');
@@ -706,59 +488,40 @@ function renderParrainage() {
     }
     groups[u.referred_by].filleuls.push(u);
   });
-
   const arr = Object.values(groups).sort((a, b) => b.filleuls.length - a.filleuls.length);
-  let filtered = arr;
-  if (PARRAIN_FILTER === 'top') filtered = arr.slice(0, 20);
-
-  const q = (document.getElementById('parrainSearch')?.value || '').toLowerCase().trim();
-  if (q) filtered = filtered.filter(g => (g.parrain.first_name || '').toLowerCase().includes(q) || (g.parrain.username || '').toLowerCase().includes(q));
 
   stats.innerHTML = `
     <div class="stat-box"><div class="lbl">Parrains actifs</div><div class="val">${arr.length}</div></div>
     <div class="stat-box" style="border-color:var(--kobo-orange);"><div class="lbl">Total filleuls</div><div class="val">${DATA.users.filter(u => u.referred_by).length}</div></div>
   `;
 
-  if (filtered.length === 0) { list.innerHTML = emptyBox('Aucun parrain'); return; }
+  const q = (document.getElementById('parrainSearch')?.value || '').toLowerCase().trim();
+  let f = arr;
+  if (q) f = f.filter(g => (g.parrain.first_name||'').toLowerCase().includes(q) || (g.parrain.username||'').toLowerCase().includes(q));
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucun parrain'); return; }
 
-  list.innerHTML = filtered.slice(0, 50).map((g, i) => {
-    const p = g.parrain;
-    const count = g.filleuls.length;
-    return `
-      <div class="item-card" style="animation-delay:${i * .03}s">
-        <div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">${escapeHtml((p.first_name || '?').charAt(0).toUpperCase())}</div>
-        <div class="ic-body">
-          <div class="ic-name">${escapeHtml(p.first_name || 'Inconnu')} <span class="badge gold">${count} filleul${count > 1 ? 's' : ''}</span></div>
-          <div class="ic-meta">
-            <span>@${escapeHtml(p.username || '—')}</span>
-            <span class="dot">•</span>
-            <span>💰 ${p.balance || 0} Kobo</span>
-          </div>
-          <div class="ic-meta" style="font-size:10.5px;">
-            ${g.filleuls.slice(0, 3).map(f => '@' + escapeHtml(f.username || '—')).join(', ')}${count > 3 ? ` +${count - 3}` : ''}
-          </div>
-        </div>
+  list.innerHTML = f.slice(0, 50).map(g => {
+    const p = g.parrain; const c = g.filleuls.length;
+    return `<div class="item-card">
+      <div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">${escapeHtml((p.first_name||'?').charAt(0).toUpperCase())}</div>
+      <div class="ic-body">
+        <div class="ic-name">${escapeHtml(p.first_name || 'Inconnu')} <span class="badge orange">${c} filleul${c>1?'s':''}</span></div>
+        <div class="ic-meta"><span>@${escapeHtml(p.username || '—')}</span><span class="dot">•</span><span>💰 ${p.balance || 0} Kobo</span></div>
       </div>
-    `;
+    </div>`;
   }).join('');
 }
 
-document.getElementById('parrainFilters').addEventListener('click', (e) => {
-  const c = e.target.closest('.filter-chip'); if (!c) return;
-  document.querySelectorAll('#parrainFilters .filter-chip').forEach(x => x.classList.remove('active'));
-  c.classList.add('active'); PARRAIN_FILTER = c.dataset.filter; renderParrainage();
-});
-
-// ========= SETTINGS =========
+// ============================================================
+// SETTINGS
+// ============================================================
 function renderSettings() {
   const list = document.getElementById('settingsList');
   const q = (document.getElementById('settingsSearch')?.value || '').toLowerCase().trim();
-  let filtered = DATA.settings;
-  if (q) filtered = filtered.filter(s => s.key.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q));
-
-  if (filtered.length === 0) { list.innerHTML = emptyBox('Aucun paramètre'); return; }
-
-  list.innerHTML = `<div class="config-group">${filtered.map(s => `
+  let f = DATA.settings;
+  if (q) f = f.filter(s => s.key.toLowerCase().includes(q) || (s.description||'').toLowerCase().includes(q));
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucun paramètre'); return; }
+  list.innerHTML = `<div class="config-group">${f.map(s => `
     <div class="config-row">
       <div class="cr-info">
         <div class="cr-label">${escapeHtml(s.description || s.key)}</div>
@@ -776,45 +539,41 @@ async function saveAllSettings() {
   for (const input of inputs) {
     let value;
     try { value = JSON.parse(input.value); } catch { value = input.value; }
-    const { error } = await sb.from('settings').update({ value, updated_at: new Date().toISOString() }).eq('key', input.dataset.key);
-    if (error) err++; else ok++;
+    const r = await apiSend('setting', 'PATCH', { key: input.dataset.key, value });
+    if (r.error) err++; else ok++;
   }
-  if (err > 0) showToast(`${ok} mis à jour, ${err} erreur(s)`, true);
-  else showToast(`✅ ${ok} paramètre(s) enregistré(s)`);
+  if (err > 0) showToast(`${ok} ok, ${err} erreurs`, true);
+  else showToast(`✅ ${ok} paramètre(s)`);
 }
 
-// ========= BROADCAST =========
+// ============================================================
+// BROADCAST
+// ============================================================
 async function sendBroadcast() {
   const msg = document.getElementById('broadcastMsg').value.trim();
   if (!msg) return showToast('Message vide', true);
-  if (!confirm('Envoyer ce message à TOUS les utilisateurs ?')) return;
+  if (!confirm('Envoyer à TOUS les users ?')) return;
   const status = document.getElementById('broadcastStatus');
-  status.textContent = '⏳ Envoi en cours...';
+  status.textContent = '⏳ Envoi...';
   try {
-    const res = await fetch('/api/admin/broadcast', {
+    const r = await fetch('/api/admin/broadcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg })
     });
-    const data = await res.json();
+    const data = await r.json();
     if (data.ok) {
-      status.textContent = `✅ Envoyé à ${data.sent} utilisateurs (${data.failed} échecs)`;
+      status.textContent = `✅ Envoyé à ${data.sent} users (${data.failed} échecs)`;
       document.getElementById('broadcastMsg').value = '';
     } else {
       status.textContent = '❌ ' + (data.error || 'Erreur');
     }
-  } catch (e) {
-    status.textContent = '❌ ' + e.message;
-  }
+  } catch (e) { status.textContent = '❌ ' + e.message; }
 }
 
-// ========= LOGOUT =========
-async function logout() {
-  await fetch('/admin/api/logout', { method: 'POST' });
-  window.location.href = '/admin';
-}
-
-// ========= UTILS =========
+// ============================================================
+// UTILITAIRES
+// ============================================================
 function openModal(title, html) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalContent').innerHTML = html;
@@ -824,7 +583,7 @@ function openModal(title, html) {
 function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); document.body.style.overflow = ''; }
 function closeModalOutside(e) { if (e.target.id === 'modalOverlay') closeModal(); }
 function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function emptyBox(msg) { return `<div class="empty"><div>${msg}</div></div>`; }
+function emptyBox(msg) { return `<div class="empty">${msg}</div>`; }
 function timeAgo(iso) {
   if (!iso) return '—';
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
