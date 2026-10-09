@@ -4,9 +4,6 @@ import { getSetting } from '../config.js';
 
 const sessions = new Map();
 
-// =====================================================
-// HELPERS
-// =====================================================
 async function koboToCurrency(kobo, currency) {
   const key = `kobo_to_${currency.toLowerCase()}`;
   const rate = Number(await getSetting(key)) || 1;
@@ -280,7 +277,6 @@ export async function confirmWithdraw(ctx) {
     .select()
     .single();
 
-  // Incrémenter total_withdrawn
   try {
     await supabase.rpc('increment_withdrawn', {
       p_user_id: userId,
@@ -304,8 +300,19 @@ export async function confirmWithdraw(ctx) {
     { parse_mode: 'Markdown' }
   );
 
-  // 🔔 Notifier le canal retrait (SANS infos perso)
-  await notifyWithdrawalChannel(ctx, session, withdrawal?.id);
+  // 🔔 Notifier le canal retrait (SANS infos perso) + sauvegarder l'ID du message
+  const msgId = await notifyWithdrawalChannel(ctx, session, withdrawal?.id);
+
+  if (msgId && withdrawal?.id) {
+    try {
+      await supabase
+        .from('withdrawals')
+        .update({ channel_message_id: msgId })
+        .eq('id', withdrawal.id);
+    } catch (e) {
+      console.error('Save channel_message_id failed:', e.message);
+    }
+  }
 
   // 🔔 Notifier les admins (avec infos complètes)
   await notifyAdmins(ctx, session, withdrawal?.id);
@@ -357,7 +364,7 @@ export async function withdrawHistory(ctx) {
 // =====================================================
 async function notifyWithdrawalChannel(ctx, session, withdrawalId) {
   const channelId = await getSetting('withdrawal_channel_id');
-  if (!channelId) return;
+  if (!channelId) return null;
 
   const now = new Date().toLocaleString('fr-FR', {
     day: '2-digit',
@@ -375,9 +382,11 @@ async function notifyWithdrawalChannel(ctx, session, withdrawalId) {
     `⏳ En attente de traitement.`;
 
   try {
-    await ctx.api.sendMessage(channelId, text, { parse_mode: 'Markdown' });
+    const sent = await ctx.api.sendMessage(channelId, text, { parse_mode: 'Markdown' });
+    return sent.message_id;
   } catch (err) {
     console.error('Erreur envoi canal retrait:', err.message);
+    return null;
   }
 }
 

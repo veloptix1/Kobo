@@ -27,6 +27,29 @@ async function sendTelegram(userId, message) {
   }
 }
 
+async function editTelegram(channelId, messageId, text) {
+  const token = process.env.BOT_TOKEN;
+  if (!token) return false;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: channelId,
+        message_id: messageId,
+        text,
+        parse_mode: 'Markdown',
+      }),
+    });
+    const j = await r.json();
+    if (!j.ok) console.error('Telegram edit failed:', j.description);
+    return j.ok;
+  } catch (err) {
+    console.error('editTelegram error:', err.message);
+    return false;
+  }
+}
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const resource = searchParams.get('resource');
@@ -88,7 +111,6 @@ export async function PATCH(req) {
   const body = await req.json();
 
   try {
-    // ===== RETRAIT =====
     if (resource === 'withdrawal') {
       const { id, status } = body;
       if (!id || !status) return NextResponse.json({ error: 'id and status required' }, { status: 400 });
@@ -108,7 +130,42 @@ export async function PATCH(req) {
 
       if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
-      // 🔔 Notifier l'utilisateur
+      const channelId = '@koboretrai';
+
+      // 🔔 1. Éditer le message dans le canal retrait
+      if (w.channel_message_id) {
+        const now = new Date().toLocaleString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        let channelText = '';
+        if (status === 'paid') {
+          channelText =
+            `✅ *Retrait payé*\n\n` +
+            `🆔 Demande #${w.id}\n` +
+            `💰 Montant : *${w.amount_target} ${w.target_currency}*\n` +
+            `📱 Méthode : ${formatMethod(w.method)}\n` +
+            `📅 Traité le ${now}\n\n` +
+            `🎉 Retrait effectué avec succès.`;
+        } else if (status === 'rejected') {
+          channelText =
+            `❌ *Retrait refusé*\n\n` +
+            `🆔 Demande #${w.id}\n` +
+            `💰 Montant : *${w.amount_target} ${w.target_currency}*\n` +
+            `📱 Méthode : ${formatMethod(w.method)}\n` +
+            `📅 Traité le ${now}\n\n` +
+            `🔙 Le montant a été remboursé.`;
+        }
+
+        if (channelText) {
+          await editTelegram(channelId, w.channel_message_id, channelText);
+        }
+      }
+
+      // 🔔 2. Notifier l'utilisateur
       if (status === 'paid') {
         const message =
           `✅ *Retrait payé !*\n\n` +
@@ -118,7 +175,6 @@ export async function PATCH(req) {
           `🎉 Merci d'avoir utilisé Kobo !`;
         await sendTelegram(w.user_id, message);
       } else if (status === 'rejected') {
-        // Rembourser le solde retirable
         try {
           await supabaseAdmin.rpc('increment_withdrawable', {
             p_user_id: w.user_id,
@@ -138,7 +194,6 @@ export async function PATCH(req) {
       return NextResponse.json({ ok: true });
     }
 
-    // ===== TÂCHE =====
     if (resource === 'task') {
       const { id, ...updates } = body;
       const { error } = await supabaseAdmin.from('tasks').update(updates).eq('id', id);
@@ -146,7 +201,6 @@ export async function PATCH(req) {
       return NextResponse.json({ ok: true });
     }
 
-    // ===== USER =====
     if (resource === 'user') {
       const { telegram_id, ...updates } = body;
       const { error } = await supabaseAdmin.from('users').update(updates).eq('telegram_id', telegram_id);
@@ -154,7 +208,6 @@ export async function PATCH(req) {
       return NextResponse.json({ ok: true });
     }
 
-    // ===== SETTING =====
     if (resource === 'setting') {
       const { key, value } = body;
       const { error } = await supabaseAdmin
