@@ -1,8 +1,10 @@
 import { supabase } from '../supabase.js';
 import { checkMandatoryChannels } from '../utils/checkChannel.js';
 import { mainMenu } from '../utils/keyboards.js';
+import { showTasks, viewTask, completeTask } from '../commands/tasks.js';
 
 export function registerCallbacks(bot) {
+  // Vérif canaux obligatoires
   bot.callbackQuery('check:channels', async (ctx) => {
     const { ok } = await checkMandatoryChannels(ctx);
     if (!ok) {
@@ -21,6 +23,21 @@ export function registerCallbacks(bot) {
     });
   });
 
+  // Menu principal
+  bot.callbackQuery('menu:home', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const { data: user } = await supabase
+      .from('users')
+      .select('balance,first_name')
+      .eq('telegram_id', ctx.from.id)
+      .single();
+    await ctx.editMessageText(
+      `🏠 *Menu principal*\n\n👤 ${user.first_name || 'Utilisateur'}\n💰 Solde : *${user.balance} Kobo*`,
+      { parse_mode: 'Markdown', reply_markup: mainMenu() }
+    );
+  });
+
+  // Solde
   bot.callbackQuery('menu:balance', async (ctx) => {
     const { data: user } = await supabase
       .from('users')
@@ -37,6 +54,31 @@ export function registerCallbacks(bot) {
     );
   });
 
+  // Tâches — affichage
+  bot.callbackQuery('menu:tasks', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await showTasks(ctx, ctx.from.id, true);
+  });
+
+  // Tâches — voir une tâche
+  bot.callbackQuery(/^task:view:(\d+)$/, async (ctx) => {
+    const taskId = Number(ctx.match[1]);
+    await ctx.answerCallbackQuery();
+    await viewTask(ctx, taskId);
+  });
+
+  // Tâches — compléter
+  bot.callbackQuery(/^task:complete:(\d+)$/, async (ctx) => {
+    const taskId = Number(ctx.match[1]);
+    await completeTask(ctx, taskId);
+  });
+
+  // Tâches — noop
+  bot.callbackQuery('task:noop', async (ctx) => {
+    await ctx.answerCallbackQuery();
+  });
+
+  // Parrainage
   bot.callbackQuery('menu:referral', async (ctx) => {
     const { data: user } = await supabase
       .from('users')
@@ -54,7 +96,8 @@ export function registerCallbacks(bot) {
     );
   });
 
-  ['menu:tasks', 'menu:withdraw', 'menu:top', 'menu:help'].forEach((key) => {
+  // Placeholder pour les autres
+  ['menu:withdraw', 'menu:top', 'menu:help'].forEach((key) => {
     bot.callbackQuery(key, async (ctx) => {
       await ctx.answerCallbackQuery({ text: '🚧 En construction', show_alert: true });
     });
