@@ -1,17 +1,15 @@
 import { InlineKeyboard, Keyboard } from 'grammy';
 
-// === Clavier persistant en bas (Reply Keyboard) ===
 export function persistentMenu() {
   return new Keyboard()
     .text('💰 Solde').text('🎯 Tâches').row()
     .text('👥 Parrainage').text('💸 Retrait').row()
     .text('🔄 Convertir').text('🏆 Classement').row()
-    .text('ℹ️ Info')
+    .text('📊 Historique').text('ℹ️ Info')
     .resized()
     .persistent();
 }
 
-// === Clavier inline (utilisé dans les messages) ===
 export function mainMenu() {
   return new InlineKeyboard()
     .text('💰 Mon solde', 'menu:balance').row()
@@ -20,5 +18,6 @@ export function mainMenu() {
     .text('💸 Retrait', 'menu:withdraw')
     .text('🔄 Convertir', 'menu:convert').row()
     .text('🏆 Classement', 'menu:top')
+    .text('📊 Historique', 'menu:history').row()
     .text('ℹ️ Info', 'menu:info');
 }
