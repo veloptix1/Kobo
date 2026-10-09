@@ -3,11 +3,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
 const links = [
-  { href: '/admin/dashboard', label: '📊 Dashboard' },
-  { href: '/admin/withdrawals', label: '💸 Retraits' },
-  { href: '/admin/tasks', label: '🎯 Tâches' },
-  { href: '/admin/users', label: '👥 Utilisateurs' },
-  { href: '/admin/settings', label: '⚙️ Paramètres' },
+  { href: '/dashboard', label: '📊 Dashboard' },
+  { href: '/withdrawals', label: '💸 Retraits' },
+  { href: '/tasks', label: '🎯 Tâches' },
+  { href: '/users', label: '👥 Utilisateurs' },
+  { href: '/settings', label: '⚙️ Paramètres' },
 ];
 
 export default function Sidebar() {
@@ -16,7 +16,7 @@ export default function Sidebar() {
 
   async function logout() {
     await fetch('/admin/api/logout', { method: 'POST' });
-    router.push('/admin');
+    router.push('/');
     router.refresh();
   }
 
@@ -28,7 +28,7 @@ export default function Sidebar() {
       </div>
       <nav className="flex-1 space-y-2">
         {links.map((l) => {
-          const active = pathname === l.href;
+          const active = pathname === l.href || pathname === `/admin${l.href}`;
           return (
             <Link key={l.href} href={l.href} className={`block px-4 py-3 rounded-xl transition ${active ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold' : 'hover:bg-white/10 text-white/80'}`}>
               {l.label}

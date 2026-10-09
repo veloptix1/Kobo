@@ -20,8 +20,12 @@ export default function LoginPage() {
     });
     const data = await res.json();
     setLoading(false);
-    if (data.ok) { router.push('/admin/dashboard'); router.refresh(); }
-    else setError(data.error || 'Erreur');
+    if (data.ok) {
+      router.push('/dashboard');
+      router.refresh();
+    } else {
+      setError(data.error || 'Erreur');
+    }
   }
 
   return (
