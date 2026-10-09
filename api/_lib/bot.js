@@ -19,31 +19,37 @@ export const bot = new Bot(process.env.BOT_TOKEN);
 // ===== Commandes =====
 bot.command('start', startCommand);
 bot.command('tasks', tasksCommand);
-bot.command('menu', (ctx) => ctx.reply('📌 Menu principal :', { reply_markup: persistentMenu() }));
+bot.command('menu', (ctx) =>
+  ctx.reply('📌 Menu principal :', { reply_markup: persistentMenu() })
+);
 bot.command('history', showHistory);
 bot.command('top', showLeaderboard);
 
 // ===== Boutons du clavier persistant =====
 
+// 💰 Solde
 bot.hears('💰 Solde', async (ctx) => {
   const { data: user } = await supabase
     .from('users')
-    .select('balance,total_earned,total_withdrawn')
+    .select('balance,withdrawable_balance,total_earned,total_withdrawn')
     .eq('telegram_id', ctx.from.id)
     .single();
   await ctx.reply(
-    `💰 *Ton solde Kobo*\n\n` +
-      `Solde actuel : *${user.balance} Kobo*\n` +
-      `Total gagné : ${user.total_earned} Kobo\n` +
-      `Total retiré : ${user.total_withdrawn} Kobo`,
+    `💰 *Ton solde*\n\n` +
+      `🪙 Kobo disponibles : *${user.balance}*\n` +
+      `💵 Solde retirable : *${user.withdrawable_balance} Kobo*\n\n` +
+      `📊 Total gagné : ${user.total_earned} Kobo\n` +
+      `📤 Total retiré : ${user.total_withdrawn} Kobo`,
     { parse_mode: 'Markdown' }
   );
 });
 
+// 🎯 Tâches
 bot.hears('🎯 Tâches', async (ctx) => {
   await showTasks(ctx, ctx.from.id);
 });
 
+// 👥 Parrainage
 bot.hears('👥 Parrainage', async (ctx) => {
   const { data: user } = await supabase
     .from('users')
@@ -60,10 +66,19 @@ bot.hears('👥 Parrainage', async (ctx) => {
   );
 });
 
+// 💸 Retrait
 bot.hears('💸 Retrait', withdrawStart);
+
+// 🔄 Convertir
 bot.hears('🔄 Convertir', convertStart);
+
+// 🏆 Classement
 bot.hears('🏆 Classement', showLeaderboard);
 
+// 📊 Historique
+bot.hears('📊 Historique', showHistory);
+
+// ℹ️ Info
 bot.hears('ℹ️ Info', async (ctx) => {
   await ctx.reply(
     `ℹ️ *À propos de Kobo*\n\n` +
@@ -79,11 +94,20 @@ bot.hears('ℹ️ Info', async (ctx) => {
   );
 });
 
-// ===== Gestion des messages texte =====
+// ===== Gestion des messages texte (montants, destinations) =====
 bot.on('message:text', async (ctx, next) => {
   if (ctx.message.text.startsWith('/')) return next();
 
-  const menuButtons = ['💰 Solde', '🎯 Tâches', '👥 Parrainage', '💸 Retrait', '🔄 Convertir', '🏆 Classement', 'ℹ️ Info'];
+  const menuButtons = [
+    '💰 Solde',
+    '🎯 Tâches',
+    '👥 Parrainage',
+    '💸 Retrait',
+    '🔄 Convertir',
+    '🏆 Classement',
+    '📊 Historique',
+    'ℹ️ Info',
+  ];
   if (menuButtons.includes(ctx.message.text)) return next();
 
   // Montant retrait
