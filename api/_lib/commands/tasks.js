@@ -20,20 +20,33 @@ export async function showTasks(ctx, userId, edit = false) {
     .order('id', { ascending: false })
     .limit(15);
 
-  // Vérif check-in du jour
-  const today = new Date().toISOString().split('T')[0];
-  const { data: checkin } = await supabase
+  // Vérif check-in : dans les dernières 24h ?
+  const { data: lastCheckin } = await supabase
     .from('task_completions')
-    .select('id')
+    .select('completed_at')
     .eq('user_id', userId)
     .eq('task_id', -1)
-    .gte('completed_at', `${today}T00:00:00`)
+    .order('completed_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  const checkinDone = !!checkin;
+  let checkinDone = false;
+  let checkinTimeLeft = '';
+  if (lastCheckin) {
+    const lastTime = new Date(lastCheckin.completed_at).getTime();
+    const diffHours = (Date.now() - lastTime) / (1000 * 60 * 60);
+    if (diffHours < 24) {
+      checkinDone = true;
+      const remaining = 24 - diffHours;
+      const h = Math.floor(remaining);
+      const m = Math.floor((remaining - h) * 60);
+      checkinTimeLeft = ` (dans ${h}h${m}min)`;
+    }
+  }
+
   const checkinBonus = Number(await getSetting('daily_checkin')) || 10;
 
-  // Récupérer les tâches faites par l'utilisateur
+  // Récupérer les tâches déjà faites par l'utilisateur
   const { data: done } = await supabase
     .from('task_completions')
     .select('task_id, status, completed_at')
@@ -52,7 +65,7 @@ export async function showTasks(ctx, userId, edit = false) {
 
   // Bouton check-in quotidien
   if (checkinDone) {
-    kb.text(`✅ Check-in fait (+${checkinBonus} Kobo)`, 'task:noop').row();
+    kb.text(`✅ Check-in fait${checkinTimeLeft}`, 'task:noop').row();
   } else {
     kb.text(`🎁 Check-in quotidien (+${checkinBonus} Kobo)`, 'task:daily_checkin').row();
   }
@@ -262,25 +275,37 @@ export async function completeTask(ctx, taskId) {
 }
 
 // =====================================================
-// CHECK-IN QUOTIDIEN
+// CHECK-IN QUOTIDIEN (1 fois par 24h max)
 // =====================================================
 export async function dailyCheckin(ctx) {
   const userId = ctx.from.id;
-  const today = new Date().toISOString().split('T')[0];
 
-  const { data: existing } = await supabase
+  // Chercher le dernier check-in
+  const { data: lastCheckin } = await supabase
     .from('task_completions')
-    .select('id')
+    .select('id, completed_at')
     .eq('user_id', userId)
     .eq('task_id', -1)
-    .gte('completed_at', `${today}T00:00:00`)
+    .order('completed_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  if (existing) {
-    return ctx.answerCallbackQuery({
-      text: "⏱️ Tu as déjà fait ton check-in aujourd'hui. Reviens demain !",
-      show_alert: true,
-    });
+  // Vérifier si moins de 24h se sont écoulées
+  if (lastCheckin) {
+    const lastTime = new Date(lastCheckin.completed_at).getTime();
+    const now = Date.now();
+    const diffHours = (now - lastTime) / (1000 * 60 * 60);
+
+    if (diffHours < 24) {
+      const remaining = 24 - diffHours;
+      const hours = Math.floor(remaining);
+      const minutes = Math.floor((remaining - hours) * 60);
+
+      return ctx.answerCallbackQuery({
+        text: `⏱️ Check-in déjà fait !\nReviens dans ${hours}h ${minutes}min.`,
+        show_alert: true,
+      });
+    }
   }
 
   const bonus = Number(await getSetting('daily_checkin')) || 10;
@@ -301,7 +326,7 @@ export async function dailyCheckin(ctx) {
   });
 
   await ctx.answerCallbackQuery({
-    text: `🎁 +${bonus} Kobo ! Reviens demain.`,
+    text: `🎁 +${bonus} Kobo ! Reviens dans 24h.`,
     show_alert: true,
   });
 }
