@@ -4,14 +4,12 @@ import { getSetting } from '../config.js';
 
 const sessions = new Map();
 
-// Calcule le montant dans la devise choisie à partir du solde en Kobo
 async function koboToCurrency(kobo, currency) {
   const key = `kobo_to_${currency.toLowerCase()}`;
   const rate = Number(await getSetting(key)) || 1;
   return kobo * rate;
 }
 
-// Calcule combien de Kobo représentent un montant dans une devise
 async function currencyToKobo(amount, currency) {
   const key = `kobo_to_${currency.toLowerCase()}`;
   const rate = Number(await getSetting(key)) || 1;
@@ -24,6 +22,16 @@ function formatAmount(n) {
   if (num >= 1000) return num.toFixed(2);
   if (num >= 1) return num.toFixed(4);
   return num.toFixed(6);
+}
+
+// Wrapper qui ignore l'erreur "message is not modified"
+async function safeEdit(ctx, text, options = {}) {
+  try {
+    await ctx.editMessageText(text, options);
+  } catch (err) {
+    if (err.message && err.message.includes('message is not modified')) return;
+    throw err;
+  }
 }
 
 // =====================================================
@@ -97,7 +105,8 @@ export async function chooseCurrency(ctx, currency) {
   kb.text('🔙 Retour', 'wd:back');
 
   await ctx.answerCallbackQuery();
-  await ctx.editMessageText(
+  await safeEdit(
+    ctx,
     `💸 *Retrait en ${currency}*\n\nChoisis la méthode :`,
     { parse_mode: 'Markdown', reply_markup: kb }
   );
@@ -124,11 +133,11 @@ export async function chooseMethod(ctx, method) {
   const availableKobo = Number(user.withdrawable_balance || 0);
   const minWithdrawKobo = Number(await getSetting('min_withdraw')) || 2000;
 
-  // Conversion dans la devise choisie
   const availableConv = await koboToCurrency(availableKobo, session.currency);
   const minConv = await koboToCurrency(minWithdrawKobo, session.currency);
 
-  await ctx.editMessageText(
+  await safeEdit(
+    ctx,
     `💸 *Retrait — ${session.currency} via ${formatMethod(method)}*\n\n` +
       `💰 Solde retirable : *${formatAmount(availableConv)} ${session.currency}*\n` +
       `   _(= ${availableKobo} Kobo)_\n` +
@@ -139,7 +148,7 @@ export async function chooseMethod(ctx, method) {
 }
 
 // =====================================================
-// SAISIE MONTANT (en devise)
+// SAISIE MONTANT
 // =====================================================
 export async function handleAmountInput(ctx, text) {
   const userId = ctx.from.id;
@@ -161,7 +170,6 @@ export async function handleAmountInput(ctx, text) {
   const availableKobo = Number(user.withdrawable_balance || 0);
   const minWithdrawKobo = Number(await getSetting('min_withdraw')) || 2000;
 
-  // Convertir le montant saisi en Kobo
   const amountKobo = await currencyToKobo(amount, session.currency);
   const minConv = await koboToCurrency(minWithdrawKobo, session.currency);
   const availableConv = await koboToCurrency(availableKobo, session.currency);
@@ -268,7 +276,8 @@ export async function confirmWithdraw(ctx) {
   sessions.delete(userId);
 
   await ctx.answerCallbackQuery({ text: '✅ Demande envoyée !', show_alert: true });
-  await ctx.editMessageText(
+  await safeEdit(
+    ctx,
     `✅ *Demande de retrait envoyée !*\n\n` +
       `💰 Montant : *${formatAmount(session.amount)} ${session.currency}*\n` +
       `📱 Méthode : ${formatMethod(session.method)}\n` +
@@ -278,6 +287,10 @@ export async function confirmWithdraw(ctx) {
     { parse_mode: 'Markdown' }
   );
 
+  // 🔔 Notifier le canal retrait (SANS infos perso)
+  await notifyWithdrawalChannel(ctx, session, withdrawal?.id);
+
+  // 🔔 Notifier les admins (avec infos perso)
   await notifyAdmins(ctx, session, withdrawal?.id);
 }
 
@@ -287,7 +300,7 @@ export async function confirmWithdraw(ctx) {
 export async function cancelWithdraw(ctx) {
   sessions.delete(ctx.from.id);
   await ctx.answerCallbackQuery({ text: 'Annulé', show_alert: true });
-  await ctx.editMessageText('❌ Demande annulée.');
+  await safeEdit(ctx, '❌ Demande annulée.');
 }
 
 // =====================================================
@@ -335,12 +348,45 @@ function formatMethod(m) {
   return names[m] || m;
 }
 
+// 📢 Message dans le canal retrait (SANS données perso)
+async function notifyWithdrawalChannel(ctx, session, withdrawalId) {
+  const channelId = await getSetting('withdrawal_channel_id');
+  if (!channelId) {
+    console.log('Pas de canal retrait configuré');
+    return;
+  }
+
+  const now = new Date().toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const text =
+    `💸 *Nouvelle demande de retrait*\n\n` +
+    `🆔 Demande #${withdrawalId || '?'}\n` +
+    `💰 Montant : *${formatAmount(session.amount)} ${session.currency}*\n` +
+    `📱 Méthode : ${formatMethod(session.method)}\n` +
+    `📅 Date : ${now}\n\n` +
+    `⏳ En attente de traitement par l'équipe.`;
+
+  try {
+    await ctx.api.sendMessage(channelId, text, { parse_mode: 'Markdown' });
+  } catch (err) {
+    console.error('Erreur envoi canal retrait:', err.message);
+  }
+}
+
+// 🔒 Notification admins (avec données complètes)
 async function notifyAdmins(ctx, session, withdrawalId) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
   const text =
     `🔔 *Nouvelle demande de retrait*\n\n` +
     `👤 User ID : \`${ctx.from.id}\`\n` +
     `💰 Montant : *${formatAmount(session.amount)} ${session.currency}*\n` +
+    `   _(= ${session.amountKobo.toFixed(2)} Kobo)_\n` +
     `📱 Méthode : ${formatMethod(session.method)}\n` +
     `📍 Destination : \`${session.destination}\`\n` +
     `🆔 ID retrait : \`${withdrawalId}\``;
