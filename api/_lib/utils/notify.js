@@ -6,7 +6,7 @@ export async function notifyUser(api, telegramId, message, options = {}) {
       .from('users')
       .select('telegram_id, is_banned')
       .eq('telegram_id', telegramId)
-      .single();
+      .maybeSingle();
 
     if (!user || user.is_banned) return false;
 
@@ -15,12 +15,17 @@ export async function notifyUser(api, telegramId, message, options = {}) {
       ...options,
     });
 
-    await supabase.from('notifications').insert({
-      user_id: telegramId,
-      message,
-      type: options.type || 'general',
-      sent_at: new Date().toISOString(),
-    }).catch(() => {});
+    // Enregistrer dans l'historique (sans bloquer si erreur)
+    try {
+      await supabase.from('notifications').insert({
+        user_id: telegramId,
+        message,
+        type: options.type || 'general',
+        sent_at: new Date().toISOString(),
+      });
+    } catch (dbErr) {
+      console.error('DB insert notification failed:', dbErr.message);
+    }
 
     return true;
   } catch (err) {
