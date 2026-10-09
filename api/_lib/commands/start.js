@@ -1,5 +1,5 @@
 import { InlineKeyboard } from 'grammy';
-import { mainMenu, persistentMenu } from '../utils/keyboards.js';
+import { persistentMenu } from '../utils/keyboards.js';
 import { getOrCreateUser } from '../utils/users.js';
 import { checkMandatoryChannels } from '../utils/checkChannel.js';
 
@@ -29,7 +29,6 @@ export async function startCommand(ctx) {
 
   const name = ctx.from.first_name || ctx.from.username || 'Utilisateur';
 
-  // Message de bienvenue avec clavier persistant
   await ctx.reply(
     isNew
       ? `🎉 Bienvenue sur *Kobo*, ${name} !\n\nTu as reçu *${user.balance} Kobo* à l'inscription.\n\nUtilise le menu en bas de l'écran pour naviguer 👇`
@@ -37,15 +36,6 @@ export async function startCommand(ctx) {
     {
       parse_mode: 'Markdown',
       reply_markup: persistentMenu(),
-    }
-  );
-
-  // Petit message d'aide avec menu inline
-  await ctx.reply(
-    '📌 *Voici tes options rapides* :',
-    {
-      parse_mode: 'Markdown',
-      reply_markup: mainMenu(),
     }
   );
 }
