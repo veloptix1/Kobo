@@ -1,17 +1,28 @@
-import { bot, webhookCallback } from './_lib/bot.js';
+import { bot } from './_lib/bot.js';
 
-const handler = webhookCallback(bot, 'node', {
-  secretToken: process.env.WEBHOOK_SECRET,
-});
-
-export default async function (req, res) {
-  if (req.method === 'POST') {
-    return handler(req, res);
-  }
+export default async function handler(req, res) {
   if (req.method === 'GET') {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    return res.end('Kobo bot is alive.');
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(200).send('Kobo bot is alive.');
   }
-  res.writeHead(405, { 'Content-Type': 'text/plain' });
-  return res.end('Method not allowed');
+
+  if (req.method !== 'POST') {
+    return res.status(405).send('Method not allowed');
+  }
+
+  // Vérif du secret Telegram
+  const secret = req.headers['x-telegram-bot-api-secret-token'];
+  if (process.env.WEBHOOK_SECRET && secret !== process.env.WEBHOOK_SECRET) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  try {
+    // Vercel parse déjà le body en objet
+    const update = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    await bot.handleUpdate(update);
+    return res.status(200).send('OK');
+  } catch (err) {
+    console.error('Webhook error:', err);
+    return res.status(200).send('OK'); // Telegram retente sinon
+  }
 }
