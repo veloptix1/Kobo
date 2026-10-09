@@ -6,18 +6,7 @@
 <title>Kobo Admin</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  :root {
-    --kobo-gold: #FFA500;
-    --kobo-orange: #FF6B00;
-    --kobo-dark: #0A1F44;
-    --kobo-deep: #061530;
-    --kobo-green: #10B981;
-    --kobo-danger: #EF4444;
-    --bg: #F7F9F8;
-    --text: #1a1a1a;
-    --muted: #6b7280;
-    --border: #e5e7eb;
-  }
+  :root { --kobo-gold: #FFA500; --kobo-orange: #FF6B00; --kobo-dark: #0A1F44; --kobo-deep: #061530; --kobo-green: #10B981; --kobo-danger: #EF4444; --bg: #F7F9F8; --text: #1a1a1a; --muted: #6b7280; --border: #e5e7eb; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 30px; }
   input, textarea, select { -webkit-user-select: text; user-select: text; }
   .loader { position: fixed; inset: 0; z-index: 9999; background: var(--kobo-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; transition: opacity .5s, visibility .5s; }
@@ -26,71 +15,65 @@
   .loader-logo span { color: var(--kobo-gold); }
   .spinner { width: 46px; height: 46px; border: 4px solid rgba(255,255,255,.2); border-top-color: var(--kobo-gold); border-radius: 50%; animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-  .header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark)); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+  .header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark)); color: #fff; }
   .header-logo-wrap { display: flex; align-items: center; gap: 10px; }
   .logo { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; }
   .logo .badge-admin { background: linear-gradient(135deg, var(--kobo-gold), var(--kobo-orange)); color: #fff; font-size: 9px; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: .5px; font-weight: 800; }
-  .btn-exit { background: rgba(255,255,255,.15); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .btn-exit svg { stroke: #fff; }
+  .btn-exit { background: rgba(255,255,255,.15); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: #fff; font-size: 18px; }
   .tabs { background: #fff; padding: 8px 10px; display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 64px; z-index: 99; -ms-overflow-style: none; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tab { padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; background: #f7faf8; color: var(--muted); border: none; cursor: pointer; font-family: inherit; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: all .2s; }
-  .tab.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; box-shadow: 0 3px 10px rgba(255,107,0,.3); }
+  .tab { padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; background: #f7faf8; color: var(--muted); border: none; cursor: pointer; font-family: inherit; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+  .tab.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; }
   .tab .tab-badge { background: var(--kobo-danger); color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 8px; min-width: 18px; text-align: center; display: none; }
   .tab .tab-badge.show { display: inline-block; }
   .content { padding: 16px; max-width: 800px; margin: 0 auto; }
   .panel { display: none; }
   .panel.active { display: block; }
   .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-  .stat-box { background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); border-left: 4px solid var(--kobo-gold); animation: fadeInUp .4s ease forwards; }
+  .stat-box { background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.05); border-left: 4px solid var(--kobo-gold); }
   .stat-box:nth-child(2) { border-color: var(--kobo-orange); }
   .stat-box:nth-child(3) { border-color: var(--kobo-green); }
   .stat-box:nth-child(4) { border-color: #3b82f6; }
-  .stat-box .lbl { font-size: 10.5px; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: .3px; margin-bottom: 6px; }
-  .stat-box .val { font-size: 20px; font-weight: 800; color: var(--text); }
+  .stat-box .lbl { font-size: 10.5px; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+  .stat-box .val { font-size: 20px; font-weight: 800; }
   .admin-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
   .admin-toolbar h2 { font-size: 17px; font-weight: 800; color: var(--kobo-dark); }
-  .btn-add { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; box-shadow: 0 3px 10px rgba(255,107,0,.3); }
-  .item-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05); display: flex; align-items: flex-start; gap: 12px; animation: fadeInUp .35s ease forwards; }
-  .item-card .ic-img { width: 52px; height: 52px; border-radius: 12px; object-fit: cover; flex-shrink: 0; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .btn-add { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border: none; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .item-card { background: #fff; border-radius: 14px; padding: 14px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.05); display: flex; align-items: flex-start; gap: 12px; }
+  .item-card .ic-img { width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 22px; }
   .item-card .ic-body { flex: 1; min-width: 0; }
-  .item-card .ic-name { font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .item-card .ic-name { font-size: 14px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
   .item-card .ic-meta { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
   .item-card .ic-meta .dot { color: #d1d5db; }
-  .item-card .ic-desc { font-size: 12px; color: #4b5563; line-height: 1.5; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #f3f4f6; }
-  .item-card .ic-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
-  .icon-btn { width: 32px; height: 32px; border-radius: 9px; background: #f7faf8; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-  .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: .3px; }
+  .item-card .ic-desc { font-size: 12px; color: #4b5563; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #f3f4f6; }
+  .item-card .ic-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .icon-btn { width: 32px; height: 32px; border-radius: 9px; background: #f7faf8; border: none; cursor: pointer; font-size: 14px; }
+  .badge { font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; }
   .badge.green { background: rgba(16,185,129,.15); color: #166534; }
   .badge.orange { background: rgba(255,107,0,.15); color: var(--kobo-orange); }
   .badge.red { background: rgba(239,68,68,.15); color: var(--kobo-danger); }
   .badge.blue { background: rgba(59,130,246,.15); color: #2563eb; }
   .badge.gray { background: rgba(107,114,128,.15); color: #4b5563; }
-  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; -ms-overflow-style: none; scrollbar-width: none; }
-  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; }
   .filter-chip { padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #fff; border: 1.5px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; white-space: nowrap; }
   .filter-chip.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border-color: transparent; }
   .search-full { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border); font-family: inherit; font-size: 13px; outline: none; margin-bottom: 12px; }
-  .search-full:focus { border-color: var(--kobo-gold); }
   .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; background: #fff; border-radius: 14px; }
   .modal-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .3s; }
   .modal-overlay.open { opacity: 1; pointer-events: auto; }
-  .modal { background: #fff; width: 100%; max-width: 520px; border-radius: 24px 24px 0 0; padding: 20px 20px 28px; transform: translateY(100%); transition: transform .4s cubic-bezier(.4,0,.2,1); max-height: 92vh; overflow-y: auto; }
+  .modal { background: #fff; width: 100%; max-width: 520px; border-radius: 24px 24px 0 0; padding: 20px 20px 28px; transform: translateY(100%); transition: transform .4s; max-height: 92vh; overflow-y: auto; }
   .modal-overlay.open .modal { transform: translateY(0); }
   .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
   .modal-title { font-size: 18px; font-weight: 800; color: var(--kobo-dark); }
-  .modal-close { width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .modal-close { width: 34px; height: 34px; border-radius: 50%; background: #f3f4f6; border: none; cursor: pointer; }
   .form-group { margin-bottom: 14px; }
   .form-group label { display: block; font-size: 12.5px; font-weight: 700; color: var(--kobo-dark); margin-bottom: 6px; }
   .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: #f7faf8; outline: none; }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--kobo-gold); background: #fff; }
   .form-group textarea { resize: vertical; min-height: 80px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .form-check { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
   .form-check input { width: auto; }
-  .form-check label { margin: 0; font-size: 13px; font-weight: 600; }
-  .btn-primary, .btn-danger, .btn-warn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-primary, .btn-danger, .btn-warn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
   .btn-primary { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; }
   .btn-danger { background: linear-gradient(135deg, #b91c1c, #dc2626); color: #fff; }
   .btn-warn { background: #f3f4f6; color: #374151; }
@@ -98,10 +81,10 @@
   .config-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
   .config-row:last-child { border-bottom: none; }
   .config-row .cr-info { flex: 1; min-width: 0; }
-  .config-row .cr-label { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .config-row .cr-label { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
   .config-row .cr-cle { font-size: 10.5px; color: var(--muted); font-family: monospace; }
   .config-row input { width: 120px; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 14px; font-weight: 700; text-align: right; font-family: inherit; outline: none; background: #f7faf8; }
-  .toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(20px); background: var(--kobo-dark); color: #fff; padding: 12px 22px; border-radius: 30px; font-size: 14px; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: all .3s; z-index: 1000; display: flex; align-items: center; gap: 8px; max-width: 90%; }
+  .toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(20px); background: var(--kobo-dark); color: #fff; padding: 12px 22px; border-radius: 30px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: all .3s; z-index: 1000; max-width: 90%; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.error { background: #b91c1c; }
 </style>
@@ -132,10 +115,7 @@
 </nav>
 
 <main class="content">
-  <div class="panel active" id="panel-stats">
-    <div class="stats-grid" id="statsGrid"></div>
-  </div>
-
+  <div class="panel active" id="panel-stats"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="panel" id="panel-retraits">
     <div class="admin-toolbar"><h2>Retraits</h2><span class="badge orange" id="retraitsPendingBadge">—</span></div>
     <input type="text" class="search-full" id="retraitsSearch" placeholder="🔍 Rechercher..." oninput="renderRetraits()">
@@ -147,40 +127,52 @@
     </div>
     <div id="retraitsList"></div>
   </div>
-
   <div class="panel" id="panel-tasks">
     <div class="admin-toolbar"><h2>Tâches</h2><button class="btn-add" onclick="openTaskModal()">➕ Nouvelle</button></div>
     <input type="text" class="search-full" id="tasksSearch" placeholder="🔍 Rechercher..." oninput="renderTasks()">
     <div id="tasksList"></div>
   </div>
-
   <div class="panel" id="panel-users">
     <div class="admin-toolbar"><h2>Utilisateurs</h2><span class="badge blue" id="usersCountBadge">—</span></div>
     <input type="text" class="search-full" id="usersSearch" placeholder="🔍 Rechercher..." oninput="renderUsers()">
     <div id="usersList"></div>
   </div>
-
   <div class="panel" id="panel-parrainage">
     <div class="admin-toolbar"><h2>Réseau de parrainage</h2></div>
     <div class="stats-grid" id="parrainStats"></div>
     <input type="text" class="search-full" id="parrainSearch" placeholder="🔍 Rechercher..." oninput="renderParrainage()">
     <div id="parrainList"></div>
   </div>
-
   <div class="panel" id="panel-settings">
     <div class="admin-toolbar"><h2>Paramètres</h2><button class="btn-add" onclick="saveAllSettings()">💾 Enregistrer</button></div>
     <input type="text" class="search-full" id="settingsSearch" placeholder="🔍 Rechercher..." oninput="renderSettings()">
     <div id="settingsList"></div>
   </div>
-
   <div class="panel" id="panel-broadcast">
-    <div class="admin-toolbar"><h2>📢 Annonce aux users</h2></div>
+    <div class="admin-toolbar"><h2>📢 Annonce</h2></div>
     <div class="config-group">
       <div class="form-group">
-        <label>Message</label>
-        <textarea id="broadcastMsg" rows="5" placeholder="Ton message..."></textarea>
+        <label>Destination</label>
+        <select id="broadcastTarget" onchange="toggleChannelInput()">
+          <option value="users">👥 Tous les utilisateurs</option>
+          <option value="channel">📢 Un canal</option>
+        </select>
       </div>
-      <button class="btn-primary" onclick="sendBroadcast()">📢 Envoyer à tous</button>
+      <div class="form-group" id="channelSelectWrap" style="display:none;">
+        <label>Canal</label>
+        <select id="broadcastChannel" onchange="toggleCustomChannel()">
+          <option value="@koboofficial">📢 Kobo Officiel</option>
+          <option value="@koboretrai">💸 Kobo Retrait</option>
+          <option value="@kobotravail">🎯 Kobo Travail</option>
+          <option value="custom">➕ Autre</option>
+        </select>
+      </div>
+      <div class="form-group" id="channelCustomWrap" style="display:none;">
+        <label>ID du canal</label>
+        <input id="broadcastChannelCustom" placeholder="@moncanal">
+      </div>
+      <div class="form-group"><label>Message</label><textarea id="broadcastMsg" rows="5"></textarea></div>
+      <button class="btn-primary" onclick="sendBroadcast()">📢 Envoyer</button>
       <div style="margin-top:12px;font-size:12px;color:#6b7280;" id="broadcastStatus"></div>
     </div>
   </div>
@@ -199,9 +191,6 @@
 <div class="toast" id="toast"><span id="toastText">—</span></div>
 
 <script>
-// ============================================================
-// CONFIG — Utilise l'API Vercel (service_role en sécurité)
-// ============================================================
 const API = '/admin/api/admin/data';
 
 async function apiGet(resource) {
@@ -220,9 +209,6 @@ async function apiSend(resource, method, body) {
 let DATA = { retraits: [], tasks: [], users: [], settings: [] };
 let RETRAIT_FILTER = 'pending';
 
-// ============================================================
-// INIT
-// ============================================================
 (async function init() {
   try {
     const [retraits, tasks, users, settings] = await Promise.all([
@@ -235,24 +221,19 @@ let RETRAIT_FILTER = 'pending';
     DATA.tasks = tasks.data || [];
     DATA.users = users.data || [];
     DATA.settings = settings.data || [];
-
     await loadStats();
     renderRetraits();
     renderTasks();
     renderUsers();
     renderParrainage();
     renderSettings();
-
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 200);
   } catch (e) {
     console.error(e);
-    document.getElementById('loader').innerHTML = '<div style="color:#fff;padding:20px;text-align:center;">Erreur de chargement : ' + e.message + '</div>';
+    document.getElementById('loader').innerHTML = '<div style="color:#fff;padding:20px;">Erreur : ' + e.message + '</div>';
   }
 })();
 
-// ============================================================
-// TABS
-// ============================================================
 document.getElementById('tabs').addEventListener('click', (e) => {
   const t = e.target.closest('.tab'); if (!t) return;
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -261,14 +242,10 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
 });
 
-// ============================================================
-// STATS
-// ============================================================
 async function loadStats() {
   const grid = document.getElementById('statsGrid');
   grid.innerHTML = '<div class="stat-box"><div class="lbl">Chargement...</div><div class="val">—</div></div>';
   const s = await apiGet('stats');
-
   const stats = [
     { l: 'Utilisateurs', v: s.totalUsers || 0 },
     { l: 'Bannis', v: s.bannedUsers || 0 },
@@ -278,15 +255,11 @@ async function loadStats() {
     { l: 'Total retiré', v: Math.round(s.totalWithdrawn || 0) },
   ];
   grid.innerHTML = stats.map(x => `<div class="stat-box"><div class="lbl">${x.l}</div><div class="val">${x.v}</div></div>`).join('');
-
   const badge = document.getElementById('retraitsBadge');
   if (s.pendingWD > 0) { badge.textContent = s.pendingWD; badge.classList.add('show'); }
   else badge.classList.remove('show');
 }
 
-// ============================================================
-// RETRAITS
-// ============================================================
 function renderRetraits() {
   const list = document.getElementById('retraitsList');
   const q = (document.getElementById('retraitsSearch')?.value || '').toLowerCase().trim();
@@ -326,14 +299,13 @@ async function wdAction(id, status) {
   if (!confirm(`Confirmer ${status === 'paid' ? 'le paiement' : 'le refus'} ?`)) return;
   const r = await apiSend('withdrawal', 'PATCH', { id, status });
   if (r.error) return showToast('Erreur : ' + r.error, true);
-  showToast('OK');
-  const idx = DATA.retraits.findIndex(x => x.id === id); if (idx >= 0) DATA.retraits[idx].status = status;
-  renderRetraits(); loadStats();
+  showToast('✅ Retrait mis à jour');
+  const fresh = await apiGet('withdrawals');
+  DATA.retraits = fresh.data || [];
+  renderRetraits();
+  loadStats();
 }
 
-// ============================================================
-// TÂCHES
-// ============================================================
 function renderTasks() {
   const list = document.getElementById('tasksList');
   const q = (document.getElementById('tasksSearch')?.value || '').toLowerCase().trim();
@@ -355,7 +327,7 @@ function renderTasks() {
   </div>`).join('');
 }
 
-function openTaskModal(id = null) {
+function openTaskModal(id) {
   const t = id ? DATA.tasks.find(x => x.id === id) : { title:'', description:'', type:'one_time', reward:0, link:'', channel_id:'', daily_limit:1, is_active:true };
   openModal(id ? 'Modifier' : 'Nouvelle tâche', `
     <div class="form-group"><label>Titre</label><input id="tTitle" value="${escapeHtml(t.title)}"></div>
@@ -409,9 +381,6 @@ async function deleteTask(id) {
   renderTasks();
 }
 
-// ============================================================
-// USERS
-// ============================================================
 function renderUsers() {
   const list = document.getElementById('usersList');
   const q = (document.getElementById('usersSearch')?.value || '').toLowerCase().trim();
@@ -428,8 +397,8 @@ function renderUsers() {
         <div class="ic-meta"><span style="color:var(--kobo-orange);font-weight:800;">💰 ${u.balance} Kobo</span><span class="dot">•</span><span>retirable ${u.withdrawable_balance || 0}</span></div>
       </div>
       <div class="ic-actions">
-        <button class="icon-btn" onclick="editUser(${u.telegram_id})" title="Modifier">✏️</button>
-        <button class="icon-btn" onclick="toggleBan(${u.telegram_id})" title="${u.is_banned ? 'Débannir' : 'Bannir'}">${u.is_banned ? '🔓' : '🚫'}</button>
+        <button class="icon-btn" onclick="editUser(${u.telegram_id})">✏️</button>
+        <button class="icon-btn" onclick="toggleBan(${u.telegram_id})">${u.is_banned ? '🔓' : '🚫'}</button>
       </div>
     </div>
   `).join('');
@@ -472,13 +441,9 @@ async function toggleBan(id) {
   renderUsers(); loadStats();
 }
 
-// ============================================================
-// PARRAINAGE
-// ============================================================
 function renderParrainage() {
   const list = document.getElementById('parrainList');
   const stats = document.getElementById('parrainStats');
-
   const groups = {};
   DATA.users.forEach(u => {
     if (!u.referred_by) return;
@@ -489,17 +454,14 @@ function renderParrainage() {
     groups[u.referred_by].filleuls.push(u);
   });
   const arr = Object.values(groups).sort((a, b) => b.filleuls.length - a.filleuls.length);
-
   stats.innerHTML = `
     <div class="stat-box"><div class="lbl">Parrains actifs</div><div class="val">${arr.length}</div></div>
     <div class="stat-box" style="border-color:var(--kobo-orange);"><div class="lbl">Total filleuls</div><div class="val">${DATA.users.filter(u => u.referred_by).length}</div></div>
   `;
-
   const q = (document.getElementById('parrainSearch')?.value || '').toLowerCase().trim();
   let f = arr;
   if (q) f = f.filter(g => (g.parrain.first_name||'').toLowerCase().includes(q) || (g.parrain.username||'').toLowerCase().includes(q));
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun parrain'); return; }
-
   list.innerHTML = f.slice(0, 50).map(g => {
     const p = g.parrain; const c = g.filleuls.length;
     return `<div class="item-card">
@@ -512,9 +474,6 @@ function renderParrainage() {
   }).join('');
 }
 
-// ============================================================
-// SETTINGS
-// ============================================================
 function renderSettings() {
   const list = document.getElementById('settingsList');
   const q = (document.getElementById('settingsSearch')?.value || '').toLowerCase().trim();
@@ -546,24 +505,40 @@ async function saveAllSettings() {
   else showToast(`✅ ${ok} paramètre(s)`);
 }
 
-// ============================================================
-// BROADCAST
-// ============================================================
+function toggleChannelInput() {
+  const target = document.getElementById('broadcastTarget').value;
+  document.getElementById('channelSelectWrap').style.display = target === 'channel' ? 'block' : 'none';
+  if (target !== 'channel') document.getElementById('channelCustomWrap').style.display = 'none';
+}
+
+function toggleCustomChannel() {
+  const val = document.getElementById('broadcastChannel').value;
+  document.getElementById('channelCustomWrap').style.display = val === 'custom' ? 'block' : 'none';
+}
+
 async function sendBroadcast() {
   const msg = document.getElementById('broadcastMsg').value.trim();
   if (!msg) return showToast('Message vide', true);
-  if (!confirm('Envoyer à TOUS les users ?')) return;
+  const target = document.getElementById('broadcastTarget').value;
   const status = document.getElementById('broadcastStatus');
+  let channelId = null;
+  if (target === 'channel') {
+    const sel = document.getElementById('broadcastChannel').value;
+    channelId = sel === 'custom' ? document.getElementById('broadcastChannelCustom').value.trim() : sel;
+    if (!channelId) return showToast('Canal requis', true);
+  }
+  const label = target === 'channel' ? `le canal ${channelId}` : 'TOUS les utilisateurs';
+  if (!confirm(`Envoyer à ${label} ?`)) return;
   status.textContent = '⏳ Envoi...';
   try {
     const r = await fetch('/admin/api/admin/broadcast', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: msg })
+      body: JSON.stringify({ message: msg, target, channelId }),
     });
     const data = await r.json();
     if (data.ok) {
-      status.textContent = `✅ Envoyé à ${data.sent} users (${data.failed} échecs)`;
+      status.textContent = target === 'channel' ? `✅ Envoyé au canal ${channelId}` : `✅ Envoyé à ${data.sent} users (${data.failed} échecs)`;
       document.getElementById('broadcastMsg').value = '';
     } else {
       status.textContent = '❌ ' + (data.error || 'Erreur');
@@ -571,9 +546,6 @@ async function sendBroadcast() {
   } catch (e) { status.textContent = '❌ ' + e.message; }
 }
 
-// ============================================================
-// UTILITAIRES
-// ============================================================
 function openModal(title, html) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalContent').innerHTML = html;
