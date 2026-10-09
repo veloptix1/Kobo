@@ -1,5 +1,6 @@
 import { supabase } from '../supabase.js';
 import { getSetting } from '../config.js';
+import { notifyReferralSignup } from './notify.js';
 
 export async function getOrCreateUser(ctx, referralCode = null) {
   const from = ctx.from;
@@ -83,6 +84,10 @@ export async function getOrCreateUser(ctx, referralCode = null) {
       });
 
       await supabase.rpc('increment_referral_count', { p_user_id: referrerId });
+
+      // 🔔 Notifier le parrain
+      const referredName = from.first_name || from.username || 'Ton filleul';
+      await notifyReferralSignup(ctx.api, referrerId, referredName, referralBonus);
     }
   }
 

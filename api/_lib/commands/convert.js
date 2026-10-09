@@ -1,6 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import { supabase } from '../supabase.js';
 import { getSetting } from '../config.js';
+import { notifyConversion } from '../utils/notify.js';
 
 // =====================================================
 // DÉMARRAGE CONVERSION
@@ -63,7 +64,6 @@ export async function convertChooseCurrency(ctx, currency) {
     });
   }
 
-  // Stocker la session en DB
   await supabase.from('user_sessions').upsert({
     user_id: userId,
     data: { step: 'convert_amount', currency },
@@ -205,6 +205,9 @@ export async function convertConfirm(ctx) {
       `📌 Tu peux maintenant retirer via le bouton 💸 *Retrait*.`,
     { parse_mode: 'Markdown' }
   );
+
+  // 🔔 Notifier l'utilisateur
+  await notifyConversion(ctx.api, userId, amount, converted, currency);
 }
 
 // =====================================================
