@@ -10,7 +10,9 @@ export const bot = new Bot(process.env.BOT_TOKEN);
 // ===== Commandes =====
 bot.command('start', startCommand);
 bot.command('tasks', tasksCommand);
-bot.command('menu', (ctx) => ctx.reply('📌 Menu principal :', { reply_markup: persistentMenu() }));
+bot.command('menu', (ctx) =>
+  ctx.reply('📌 Menu principal :', { reply_markup: persistentMenu() })
+);
 
 // ===== Boutons du clavier persistant =====
 
@@ -55,9 +57,16 @@ bot.hears('👥 Parrainage', async (ctx) => {
   );
 });
 
-// 💸 Retrait (placeholder pour l'instant)
+// 💸 Retrait (placeholder — sera développé)
 bot.hears('💸 Retrait', async (ctx) => {
   await ctx.reply('💸 *Retrait*\n\n🚧 En construction — bientôt disponible !', {
+    parse_mode: 'Markdown',
+  });
+});
+
+// 🔄 Convertir (placeholder — sera développé)
+bot.hears('🔄 Convertir', async (ctx) => {
+  await ctx.reply('🔄 *Convertir*\n\n🚧 En construction — bientôt disponible !', {
     parse_mode: 'Markdown',
   });
 });
@@ -69,19 +78,22 @@ bot.hears('🏆 Classement', async (ctx) => {
   });
 });
 
-// ℹ️ Aide
-bot.hears('ℹ️ Aide', async (ctx) => {
+// ℹ️ Info
+bot.hears('ℹ️ Info', async (ctx) => {
   await ctx.reply(
-    'ℹ️ *Aide Kobo*\n\n' +
-      '🎯 Gagne des Kobo en faisant des tâches\n' +
-      '👥 Invite des amis pour gagner plus\n' +
-      '💸 Convertis tes Kobo en FCFA/XOF/USDT\n\n' +
-      'Besoin d\'aide ? Contacte le support.',
+    `ℹ️ *À propos de Kobo*\n\n` +
+      `Kobo est un bot qui te permet de gagner des Kobo 💰 en accomplissant des tâches simples.\n\n` +
+      `🎯 *Tâches* : complète des missions et gagne des Kobo\n` +
+      `👥 *Parrainage* : invite des amis et gagne plus\n` +
+      `🔄 *Convertir* : convertis tes Kobo en FCFA, XOF ou USDT\n` +
+      `💸 *Retrait* : retire tes gains\n\n` +
+      `📌 *Taux de base* : 1 Kobo = 1 FCFA\n\n` +
+      `❓ Besoin d'aide ? Contacte le support.`,
     { parse_mode: 'Markdown' }
   );
 });
 
-// ===== Callbacks inline (pour les futurs usages) =====
+// ===== Callbacks inline =====
 registerCallbacks(bot);
 
 bot.catch((err) => {
