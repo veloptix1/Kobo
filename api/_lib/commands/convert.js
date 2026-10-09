@@ -2,6 +2,9 @@ import { InlineKeyboard } from 'grammy';
 import { supabase } from '../supabase.js';
 import { getSetting } from '../config.js';
 
+// =====================================================
+// DÉMARRAGE CONVERSION
+// =====================================================
 export async function convertStart(ctx) {
   const userId = ctx.from.id;
 
@@ -44,6 +47,9 @@ export async function convertStart(ctx) {
   );
 }
 
+// =====================================================
+// CHOIX DEVISE
+// =====================================================
 export async function convertChooseCurrency(ctx, currency) {
   const userId = ctx.from.id;
 
@@ -57,8 +63,7 @@ export async function convertChooseCurrency(ctx, currency) {
     });
   }
 
-  // On stocke la devise dans une session via un mapping simple
-  // Astuce : on utilise une table `user_sessions` pour être serverless-friendly
+  // Stocker la session en DB
   await supabase.from('user_sessions').upsert({
     user_id: userId,
     data: { step: 'convert_amount', currency },
@@ -84,6 +89,9 @@ export async function convertChooseCurrency(ctx, currency) {
   );
 }
 
+// =====================================================
+// SAISIE MONTANT
+// =====================================================
 export async function handleConvertAmount(ctx, text) {
   const userId = ctx.from.id;
 
@@ -97,7 +105,9 @@ export async function handleConvertAmount(ctx, text) {
 
   const amount = Number(text.replace(/\s/g, ''));
   if (!amount || isNaN(amount) || amount <= 0) {
-    await ctx.reply('❌ Montant invalide. Envoie un nombre (ex: `500`).', { parse_mode: 'Markdown' });
+    await ctx.reply('❌ Montant invalide. Envoie un nombre (ex: `500`).', {
+      parse_mode: 'Markdown',
+    });
     return true;
   }
 
@@ -118,7 +128,9 @@ export async function handleConvertAmount(ctx, text) {
   }
 
   if (amount > user.balance) {
-    await ctx.reply(`❌ Solde insuffisant. Tu as *${user.balance} Kobo*.`, { parse_mode: 'Markdown' });
+    await ctx.reply(`❌ Solde insuffisant. Tu as *${user.balance} Kobo*.`, {
+      parse_mode: 'Markdown',
+    });
     return true;
   }
 
@@ -145,6 +157,9 @@ export async function handleConvertAmount(ctx, text) {
   return true;
 }
 
+// =====================================================
+// CONFIRMATION
+// =====================================================
 export async function convertConfirm(ctx) {
   const userId = ctx.from.id;
 
@@ -160,19 +175,25 @@ export async function convertConfirm(ctx) {
 
   const { currency, amount, converted } = session.data;
 
-  // Débiter le solde
+  // Débiter les Kobo
   const { data: ok, error } = await supabase.rpc('debit_user', {
     p_user_id: userId,
     p_amount: amount,
     p_type: 'convert',
     p_reference: currency,
-    p_metadata: { currency, converted, rate: converted / amount },
+    p_metadata: { currency, converted },
   });
 
   if (error || ok === false) {
     await supabase.from('user_sessions').delete().eq('user_id', userId);
     return ctx.answerCallbackQuery({ text: '❌ Erreur : solde insuffisant.', show_alert: true });
   }
+
+  // Créditer le solde retirable
+  await supabase.rpc('increment_withdrawable', {
+    p_user_id: userId,
+    p_amount: amount,
+  });
 
   await supabase.from('user_sessions').delete().eq('user_id', userId);
 
@@ -181,11 +202,14 @@ export async function convertConfirm(ctx) {
     `✅ *Conversion réussie !*\n\n` +
       `💰 Débité : *${amount} Kobo*\n` +
       `💱 Converti : *${converted} ${currency}*\n\n` +
-      `📌 Pour retirer tes ${currency}, utilise le bouton 💸 *Retrait*.`,
+      `📌 Tu peux maintenant retirer via le bouton 💸 *Retrait*.`,
     { parse_mode: 'Markdown' }
   );
 }
 
+// =====================================================
+// ANNULER
+// =====================================================
 export async function convertCancel(ctx) {
   await supabase.from('user_sessions').delete().eq('user_id', ctx.from.id);
   await ctx.answerCallbackQuery({ text: 'Annulé', show_alert: true });
