@@ -1,7 +1,14 @@
 import { supabase } from '../supabase.js';
 import { checkMandatoryChannels } from '../utils/checkChannel.js';
 import { mainMenu } from '../utils/keyboards.js';
-import { showTasks, viewTask, completeTask } from '../commands/tasks.js';
+import { showTasks, viewTask, completeTask, dailyCheckin } from '../commands/tasks.js';
+import {
+  chooseCurrency,
+  chooseMethod,
+  confirmWithdraw,
+  cancelWithdraw,
+  withdrawStart,
+} from '../commands/withdraw.js';
 
 export function registerCallbacks(bot) {
   // Vérif canaux obligatoires
@@ -23,7 +30,6 @@ export function registerCallbacks(bot) {
     });
   });
 
-  // Menu principal
   bot.callbackQuery('menu:home', async (ctx) => {
     await ctx.answerCallbackQuery();
     const { data: user } = await supabase
@@ -37,7 +43,6 @@ export function registerCallbacks(bot) {
     );
   });
 
-  // Solde
   bot.callbackQuery('menu:balance', async (ctx) => {
     const { data: user } = await supabase
       .from('users')
@@ -54,31 +59,27 @@ export function registerCallbacks(bot) {
     );
   });
 
-  // Tâches — affichage
   bot.callbackQuery('menu:tasks', async (ctx) => {
     await ctx.answerCallbackQuery();
     await showTasks(ctx, ctx.from.id, true);
   });
 
-  // Tâches — voir une tâche
   bot.callbackQuery(/^task:view:(\d+)$/, async (ctx) => {
-    const taskId = Number(ctx.match[1]);
     await ctx.answerCallbackQuery();
-    await viewTask(ctx, taskId);
+    await viewTask(ctx, Number(ctx.match[1]));
   });
 
-  // Tâches — compléter
   bot.callbackQuery(/^task:complete:(\d+)$/, async (ctx) => {
-    const taskId = Number(ctx.match[1]);
-    await completeTask(ctx, taskId);
+    await completeTask(ctx, Number(ctx.match[1]));
   });
 
-  // Tâches — noop
-  bot.callbackQuery('task:noop', async (ctx) => {
-    await ctx.answerCallbackQuery();
+  bot.callbackQuery('task:noop', (ctx) => ctx.answerCallbackQuery());
+
+  bot.callbackQuery('task:daily_checkin', async (ctx) => {
+    await dailyCheckin(ctx);
+    await showTasks(ctx, ctx.from.id, true);
   });
 
-  // Parrainage
   bot.callbackQuery('menu:referral', async (ctx) => {
     const { data: user } = await supabase
       .from('users')
@@ -89,17 +90,44 @@ export function registerCallbacks(bot) {
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
       `👥 *Parrainage*\n\n` +
-        `Ton lien : \`${link}\`\n\n` +
+        `Ton lien :\n\`${link}\`\n\n` +
         `Filleuls validés : *${user.referral_count}*\n\n` +
         `Partage ce lien pour gagner des Kobo par filleul.`,
       { parse_mode: 'Markdown', reply_markup: mainMenu() }
     );
   });
 
-  // Placeholder pour les autres
-  ['menu:withdraw', 'menu:top', 'menu:help'].forEach((key) => {
-    bot.callbackQuery(key, async (ctx) => {
-      await ctx.answerCallbackQuery({ text: '🚧 En construction', show_alert: true });
-    });
+  // ===== RETRAIT =====
+  bot.callbackQuery('menu:withdraw', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await withdrawStart(ctx);
+  });
+
+  bot.callbackQuery(/^wd:currency:(.+)$/, async (ctx) => {
+    await chooseCurrency(ctx, ctx.match[1]);
+  });
+
+  bot.callbackQuery(/^wd:method:(.+)$/, async (ctx) => {
+    await chooseMethod(ctx, ctx.match[1]);
+  });
+
+  bot.callbackQuery('wd:confirm', async (ctx) => {
+    await confirmWithdraw(ctx);
+  });
+
+  bot.callbackQuery('wd:cancel', async (ctx) => {
+    await cancelWithdraw(ctx);
+  });
+
+  bot.callbackQuery('wd:back', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await withdrawStart(ctx);
+  });
+
+  // Placeholder
+  ['menu:convert', 'menu:top', 'menu:info'].forEach((key) => {
+    bot.callbackQuery(key, (ctx) =>
+      ctx.answerCallbackQuery({ text: '🚧 En construction', show_alert: true })
+    );
   });
 }
