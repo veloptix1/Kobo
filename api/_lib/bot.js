@@ -7,6 +7,9 @@ import {
   handleDestinationInput,
   withdrawHistory,
 } from './commands/withdraw.js';
+import { convertStart, handleConvertAmount } from './commands/convert.js';
+import { showLeaderboard } from './commands/leaderboard.js';
+import { showHistory } from './commands/history.js';
 import { registerCallbacks } from './callbacks/index.js';
 import { persistentMenu } from './utils/keyboards.js';
 import { supabase } from './supabase.js';
@@ -17,7 +20,8 @@ export const bot = new Bot(process.env.BOT_TOKEN);
 bot.command('start', startCommand);
 bot.command('tasks', tasksCommand);
 bot.command('menu', (ctx) => ctx.reply('📌 Menu principal :', { reply_markup: persistentMenu() }));
-bot.command('history', withdrawHistory);
+bot.command('history', showHistory);
+bot.command('top', showLeaderboard);
 
 // ===== Boutons du clavier persistant =====
 
@@ -57,18 +61,8 @@ bot.hears('👥 Parrainage', async (ctx) => {
 });
 
 bot.hears('💸 Retrait', withdrawStart);
-
-bot.hears('🔄 Convertir', async (ctx) => {
-  await ctx.reply('🔄 *Convertir*\n\n🚧 En construction — bientôt disponible !', {
-    parse_mode: 'Markdown',
-  });
-});
-
-bot.hears('🏆 Classement', async (ctx) => {
-  await ctx.reply('🏆 *Classement*\n\n🚧 En construction — bientôt disponible !', {
-    parse_mode: 'Markdown',
-  });
-});
+bot.hears('🔄 Convertir', convertStart);
+bot.hears('🏆 Classement', showLeaderboard);
 
 bot.hears('ℹ️ Info', async (ctx) => {
   await ctx.reply(
@@ -77,29 +71,32 @@ bot.hears('ℹ️ Info', async (ctx) => {
       `🎯 *Tâches* : complète des missions et gagne des Kobo\n` +
       `👥 *Parrainage* : invite des amis et gagne plus\n` +
       `🔄 *Convertir* : convertis tes Kobo en FCFA, XOF ou USDT\n` +
-      `💸 *Retrait* : retire tes gains\n\n` +
+      `💸 *Retrait* : retire tes gains\n` +
+      `📊 *Historique* : voir toutes tes transactions\n\n` +
       `📌 *Taux de base* : 1 Kobo = 1 FCFA\n\n` +
       `❓ Besoin d'aide ? Contacte le support.`,
     { parse_mode: 'Markdown' }
   );
 });
 
-// ===== Gestion des messages texte (montants, destinations) =====
+// ===== Gestion des messages texte =====
 bot.on('message:text', async (ctx, next) => {
-  // Ignore les commandes
   if (ctx.message.text.startsWith('/')) return next();
 
-  // Ignore les boutons du menu
   const menuButtons = ['💰 Solde', '🎯 Tâches', '👥 Parrainage', '💸 Retrait', '🔄 Convertir', '🏆 Classement', 'ℹ️ Info'];
   if (menuButtons.includes(ctx.message.text)) return next();
 
-  // Essaie de traiter comme saisie de montant
-  const handledAmount = await handleAmountInput(ctx, ctx.message.text);
-  if (handledAmount) return;
+  // Montant retrait
+  const handledWdAmount = await handleAmountInput(ctx, ctx.message.text);
+  if (handledWdAmount) return;
 
-  // Essaie de traiter comme saisie de destination
-  const handledDest = await handleDestinationInput(ctx, ctx.message.text);
-  if (handledDest) return;
+  // Destination retrait
+  const handledWdDest = await handleDestinationInput(ctx, ctx.message.text);
+  if (handledWdDest) return;
+
+  // Montant conversion
+  const handledCvAmount = await handleConvertAmount(ctx, ctx.message.text);
+  if (handledCvAmount) return;
 
   return next();
 });
