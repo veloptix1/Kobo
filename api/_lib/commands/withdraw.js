@@ -4,15 +4,12 @@ import { getSetting } from '../config.js';
 
 const sessions = new Map();
 
-// =====================================================
-// DÉMARRAGE
-// =====================================================
 export async function withdrawStart(ctx) {
   const userId = ctx.from.id;
 
   const { data: user } = await supabase
     .from('users')
-    .select('withdrawable_balance')
+    .select('withdrawable_balance, balance')
     .eq('telegram_id', userId)
     .single();
 
@@ -24,9 +21,9 @@ export async function withdrawStart(ctx) {
     return ctx.reply(
       `💸 *Retrait*\n\n` +
         `❌ Solde retirable insuffisant.\n\n` +
-        `💰 Solde retirable : *${available} Kobo*\n` +
-        `📊 Minimum : *${minWithdraw} Kobo*\n` +
-        `Il te manque : *${missing} Kobo*\n\n` +
+        `💰 Solde retirable : *${available} FCFA*\n` +
+        `📊 Minimum : *${minWithdraw} FCFA*\n` +
+        `Il te manque : *${missing} FCFA*\n\n` +
         `🔄 Convertir tes Kobo d'abord via le bouton *Convertir*.`,
       { parse_mode: 'Markdown' }
     );
@@ -47,16 +44,13 @@ export async function withdrawStart(ctx) {
 
   await ctx.reply(
     `💸 *Retrait*\n\n` +
-      `💰 Solde retirable : *${available} Kobo*\n` +
-      `📊 Minimum : *${minWithdraw} Kobo*\n\n` +
+      `💰 Solde retirable : *${available} FCFA*\n` +
+      `📊 Minimum : *${minWithdraw} FCFA*\n\n` +
       `Choisis la devise de retrait :`,
     { parse_mode: 'Markdown', reply_markup: kb }
   );
 }
 
-// =====================================================
-// CHOIX DEVISE
-// =====================================================
 export async function chooseCurrency(ctx, currency) {
   const userId = ctx.from.id;
   sessions.set(userId, { step: 'choose_method', currency });
@@ -81,9 +75,6 @@ export async function chooseCurrency(ctx, currency) {
   );
 }
 
-// =====================================================
-// CHOIX MÉTHODE
-// =====================================================
 export async function chooseMethod(ctx, method) {
   const userId = ctx.from.id;
   const session = sessions.get(userId) || {};
@@ -100,19 +91,17 @@ export async function chooseMethod(ctx, method) {
     .single();
 
   const minWithdraw = Number(await getSetting('min_withdraw')) || 2000;
+  const available = Number(user.withdrawable_balance || 0);
 
   await ctx.editMessageText(
     `💸 *Retrait — ${session.currency} via ${formatMethod(method)}*\n\n` +
-      `💰 Solde retirable : *${user.withdrawable_balance} Kobo*\n` +
-      `📊 Minimum : *${minWithdraw} Kobo*\n\n` +
-      `✍️ Envoie le *montant à retirer* (ex: \`2000\`)`,
+      `💰 Solde retirable : *${available} ${session.currency}*\n` +
+      `📊 Minimum : *${minWithdraw} ${session.currency}*\n\n` +
+      `✍️ Envoie le *montant en ${session.currency}* à retirer (ex: \`2000\`)`,
     { parse_mode: 'Markdown' }
   );
 }
 
-// =====================================================
-// SAISIE MONTANT
-// =====================================================
 export async function handleAmountInput(ctx, text) {
   const userId = ctx.from.id;
   const session = sessions.get(userId);
@@ -133,20 +122,28 @@ export async function handleAmountInput(ctx, text) {
   const minWithdraw = Number(await getSetting('min_withdraw')) || 2000;
   const available = Number(user.withdrawable_balance || 0);
 
+  const rateKey = `kobo_to_${session.currency.toLowerCase()}`;
+  const rate = Number(await getSetting(rateKey)) || 1;
+  const amountInKobo = session.currency === 'USDT' ? amount / rate : amount;
+
   if (amount < minWithdraw) {
-    await ctx.reply(`❌ Le minimum est de *${minWithdraw} Kobo*. Réessaie.`, { parse_mode: 'Markdown' });
+    await ctx.reply(
+      `❌ Le minimum est de *${minWithdraw} ${session.currency}*. Réessaie.`,
+      { parse_mode: 'Markdown' }
+    );
     return true;
   }
 
-  if (amount > available) {
+  if (amountInKobo > available) {
     await ctx.reply(
-      `❌ Solde retirable insuffisant. Disponible : *${available} Kobo*.`,
+      `❌ Solde insuffisant. Disponible : *${available} ${session.currency}*.`,
       { parse_mode: 'Markdown' }
     );
     return true;
   }
 
   session.amount = amount;
+  session.amountKobo = amountInKobo;
   session.step = 'enter_destination';
   sessions.set(userId, session);
 
@@ -159,9 +156,6 @@ export async function handleAmountInput(ctx, text) {
   return true;
 }
 
-// =====================================================
-// SAISIE DESTINATION
-// =====================================================
 export async function handleDestinationInput(ctx, text) {
   const userId = ctx.from.id;
   const session = sessions.get(userId);
@@ -171,17 +165,13 @@ export async function handleDestinationInput(ctx, text) {
   session.step = 'confirm';
   sessions.set(userId, session);
 
-  const rate = await getRate(session.currency);
-  const converted = (session.amount * rate).toFixed(2);
-
   const kb = new InlineKeyboard()
     .text('✅ Confirmer', 'wd:confirm')
     .text('❌ Annuler', 'wd:cancel');
 
   await ctx.reply(
     `📋 *Récapitulatif*\n\n` +
-      `💰 Montant : *${session.amount} Kobo*\n` +
-      `💱 Tu recevras : *${converted} ${session.currency}*\n` +
+      `💰 Montant : *${session.amount} ${session.currency}*\n` +
       `📱 Méthode : ${formatMethod(session.method)}\n` +
       `📍 Destination : \`${session.destination}\`\n\n` +
       `Confirme pour envoyer ta demande.`,
@@ -190,9 +180,6 @@ export async function handleDestinationInput(ctx, text) {
   return true;
 }
 
-// =====================================================
-// CONFIRMATION FINALE
-// =====================================================
 export async function confirmWithdraw(ctx) {
   const userId = ctx.from.id;
   const session = sessions.get(userId);
@@ -200,13 +187,9 @@ export async function confirmWithdraw(ctx) {
     return ctx.answerCallbackQuery({ text: '❌ Session expirée. Recommence.', show_alert: true });
   }
 
-  const rate = await getRate(session.currency);
-  const converted = (session.amount * rate).toFixed(2);
-
-  // Débiter le solde retirable
   const { data: ok, error } = await supabase.rpc('debit_withdrawable', {
     p_user_id: userId,
-    p_amount: session.amount,
+    p_amount: session.amountKobo,
   });
 
   if (error || ok === false) {
@@ -214,13 +197,12 @@ export async function confirmWithdraw(ctx) {
     return ctx.answerCallbackQuery({ text: '❌ Solde insuffisant.', show_alert: true });
   }
 
-  // Enregistrer le retrait
   const { data: withdrawal } = await supabase
     .from('withdrawals')
     .insert({
       user_id: userId,
-      amount_kobo: session.amount,
-      amount_target: Number(converted),
+      amount_kobo: session.amountKobo,
+      amount_target: session.amount,
       target_currency: session.currency,
       method: session.method,
       destination: session.destination,
@@ -229,10 +211,9 @@ export async function confirmWithdraw(ctx) {
     .select()
     .single();
 
-  // Mettre à jour total_withdrawn
   await supabase.rpc('increment_withdrawn', {
     p_user_id: userId,
-    p_amount: session.amount,
+    p_amount: session.amountKobo,
   }).catch(() => {});
 
   sessions.delete(userId);
@@ -240,8 +221,7 @@ export async function confirmWithdraw(ctx) {
   await ctx.answerCallbackQuery({ text: '✅ Demande envoyée !', show_alert: true });
   await ctx.editMessageText(
     `✅ *Demande de retrait envoyée !*\n\n` +
-      `💰 Montant : *${session.amount} Kobo*\n` +
-      `💱 Tu recevras : *${converted} ${session.currency}*\n` +
+      `💰 Montant : *${session.amount} ${session.currency}*\n` +
       `📱 Méthode : ${formatMethod(session.method)}\n` +
       `📍 Destination : \`${session.destination}\`\n\n` +
       `⏳ Traitement sous 24-48h.\n` +
@@ -249,21 +229,15 @@ export async function confirmWithdraw(ctx) {
     { parse_mode: 'Markdown' }
   );
 
-  await notifyAdmins(ctx, session, converted, withdrawal?.id);
+  await notifyAdmins(ctx, session, withdrawal?.id);
 }
 
-// =====================================================
-// ANNULER
-// =====================================================
 export async function cancelWithdraw(ctx) {
   sessions.delete(ctx.from.id);
   await ctx.answerCallbackQuery({ text: 'Annulé', show_alert: true });
   await ctx.editMessageText('❌ Demande annulée.');
 }
 
-// =====================================================
-// HISTORIQUE
-// =====================================================
 export async function withdrawHistory(ctx) {
   const userId = ctx.from.id;
 
@@ -293,14 +267,6 @@ export async function withdrawHistory(ctx) {
   await ctx.reply(text, { parse_mode: 'Markdown' });
 }
 
-// =====================================================
-// HELPERS
-// =====================================================
-async function getRate(currency) {
-  const key = `kobo_to_${currency.toLowerCase()}`;
-  return Number(await getSetting(key)) || 1;
-}
-
 function formatMethod(m) {
   const names = {
     orange_money: 'Orange Money',
@@ -311,13 +277,12 @@ function formatMethod(m) {
   return names[m] || m;
 }
 
-async function notifyAdmins(ctx, session, converted, withdrawalId) {
+async function notifyAdmins(ctx, session, withdrawalId) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
   const text =
     `🔔 *Nouvelle demande de retrait*\n\n` +
     `👤 User ID : \`${ctx.from.id}\`\n` +
-    `💰 Montant : *${session.amount} Kobo*\n` +
-    `💱 À envoyer : *${converted} ${session.currency}*\n` +
+    `💰 Montant : *${session.amount} ${session.currency}*\n` +
     `📱 Méthode : ${formatMethod(session.method)}\n` +
     `📍 Destination : \`${session.destination}\`\n` +
     `🆔 ID retrait : \`${withdrawalId}\``;
