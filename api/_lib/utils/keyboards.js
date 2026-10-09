@@ -5,18 +5,20 @@ export function persistentMenu() {
   return new Keyboard()
     .text('💰 Solde').text('🎯 Tâches').row()
     .text('👥 Parrainage').text('💸 Retrait').row()
-    .text('🏆 Classement').text('ℹ️ Aide')
-    .resized()      // taille adaptée au contenu
-    .persistent();  // reste toujours visible
+    .text('🔄 Convertir').text('🏆 Classement').row()
+    .text('ℹ️ Info')
+    .resized()
+    .persistent();
 }
 
-// === Clavier inline (dans les messages) ===
+// === Clavier inline (utilisé dans les messages) ===
 export function mainMenu() {
   return new InlineKeyboard()
     .text('💰 Mon solde', 'menu:balance').row()
     .text('🎯 Tâches', 'menu:tasks')
     .text('👥 Parrainage', 'menu:referral').row()
     .text('💸 Retrait', 'menu:withdraw')
-    .text('🏆 Classement', 'menu:top').row()
-    .text('ℹ️ Aide', 'menu:help');
+    .text('🔄 Convertir', 'menu:convert').row()
+    .text('🏆 Classement', 'menu:top')
+    .text('ℹ️ Info', 'menu:info');
 }
