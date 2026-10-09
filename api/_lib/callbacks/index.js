@@ -8,10 +8,14 @@ import {
   confirmWithdraw,
   cancelWithdraw,
   withdrawStart,
+  withdrawHistory,
 } from '../commands/withdraw.js';
+import { convertStart, convertChooseCurrency, convertConfirm, convertCancel } from '../commands/convert.js';
+import { showLeaderboard } from '../commands/leaderboard.js';
+import { showHistory } from '../commands/history.js';
 
 export function registerCallbacks(bot) {
-  // Vérif canaux obligatoires
+  // ===== CANAUX =====
   bot.callbackQuery('check:channels', async (ctx) => {
     const { ok } = await checkMandatoryChannels(ctx);
     if (!ok) {
@@ -20,16 +24,14 @@ export function registerCallbacks(bot) {
         show_alert: true,
       });
     }
-    await supabase
-      .from('users')
-      .update({ is_verified: true })
-      .eq('telegram_id', ctx.from.id);
+    await supabase.from('users').update({ is_verified: true }).eq('telegram_id', ctx.from.id);
     await ctx.answerCallbackQuery('✅ Vérifié !');
     await ctx.editMessageText('✅ Accès autorisé. Utilise le menu 👇', {
       reply_markup: mainMenu(),
     });
   });
 
+  // ===== MENU =====
   bot.callbackQuery('menu:home', async (ctx) => {
     await ctx.answerCallbackQuery();
     const { data: user } = await supabase
@@ -59,6 +61,7 @@ export function registerCallbacks(bot) {
     );
   });
 
+  // ===== TÂCHES =====
   bot.callbackQuery('menu:tasks', async (ctx) => {
     await ctx.answerCallbackQuery();
     await showTasks(ctx, ctx.from.id, true);
@@ -80,6 +83,7 @@ export function registerCallbacks(bot) {
     await showTasks(ctx, ctx.from.id, true);
   });
 
+  // ===== PARRAINAGE =====
   bot.callbackQuery('menu:referral', async (ctx) => {
     const { data: user } = await supabase
       .from('users')
@@ -103,31 +107,51 @@ export function registerCallbacks(bot) {
     await withdrawStart(ctx);
   });
 
-  bot.callbackQuery(/^wd:currency:(.+)$/, async (ctx) => {
-    await chooseCurrency(ctx, ctx.match[1]);
-  });
-
-  bot.callbackQuery(/^wd:method:(.+)$/, async (ctx) => {
-    await chooseMethod(ctx, ctx.match[1]);
-  });
-
-  bot.callbackQuery('wd:confirm', async (ctx) => {
-    await confirmWithdraw(ctx);
-  });
-
-  bot.callbackQuery('wd:cancel', async (ctx) => {
-    await cancelWithdraw(ctx);
-  });
+  bot.callbackQuery(/^wd:currency:(.+)$/, (ctx) => chooseCurrency(ctx, ctx.match[1]));
+  bot.callbackQuery(/^wd:method:(.+)$/, (ctx) => chooseMethod(ctx, ctx.match[1]));
+  bot.callbackQuery('wd:confirm', confirmWithdraw);
+  bot.callbackQuery('wd:cancel', cancelWithdraw);
 
   bot.callbackQuery('wd:back', async (ctx) => {
     await ctx.answerCallbackQuery();
     await withdrawStart(ctx);
   });
 
-  // Placeholder
-  ['menu:convert', 'menu:top', 'menu:info'].forEach((key) => {
-    bot.callbackQuery(key, (ctx) =>
-      ctx.answerCallbackQuery({ text: '🚧 En construction', show_alert: true })
+  bot.callbackQuery('menu:withdraw_history', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await withdrawHistory(ctx);
+  });
+
+  // ===== CONVERSION =====
+  bot.callbackQuery('menu:convert', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await convertStart(ctx);
+  });
+
+  bot.callbackQuery(/^cv:to:(.+)$/, (ctx) => convertChooseCurrency(ctx, ctx.match[1]));
+  bot.callbackQuery('cv:confirm', convertConfirm);
+  bot.callbackQuery('cv:cancel', convertCancel);
+
+  // ===== CLASSEMENT =====
+  bot.callbackQuery('menu:top', showLeaderboard);
+
+  // ===== HISTORIQUE =====
+  bot.callbackQuery('menu:history', showHistory);
+
+  // ===== INFO =====
+  bot.callbackQuery('menu:info', async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await ctx.editMessageText(
+      `ℹ️ *À propos de Kobo*\n\n` +
+        `Kobo est un bot qui te permet de gagner des Kobo 💰 en accomplissant des tâches simples.\n\n` +
+        `🎯 *Tâches* : complète des missions et gagne des Kobo\n` +
+        `👥 *Parrainage* : invite des amis et gagne plus\n` +
+        `🔄 *Convertir* : convertis tes Kobo en FCFA, XOF ou USDT\n` +
+        `💸 *Retrait* : retire tes gains\n` +
+        `📊 *Historique* : voir toutes tes transactions\n\n` +
+        `📌 *Taux de base* : 1 Kobo = 1 FCFA\n\n` +
+        `❓ Besoin d'aide ? Contacte le support.`,
+      { parse_mode: 'Markdown', reply_markup: mainMenu() }
     );
   });
 }
