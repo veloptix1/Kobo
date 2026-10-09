@@ -350,7 +350,7 @@
 <script>
 // ========= CONFIG =========
 // Ces valeurs sont injectées par le backend (voir api/admin/config.js)
-const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON);
+const sb = supabase.createClient('https://xbptlbcrxtcyzrrsahqs.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhicHRsYmNyeHRjeXpycnNhaHFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MzU0NjIsImV4cCI6MjEwNzExMTQ2Mn0.QbF0ry9BcTyB6dVtBzPOmXO5rJs5nZQWKYmLo9Gbz2M');
 
 let DATA = { retraits: [], tasks: [], users: [], settings: [], referrals: [] };
 let RETRAIT_FILTER = 'pending';
