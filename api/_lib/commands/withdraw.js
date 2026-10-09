@@ -2,8 +2,6 @@ import { InlineKeyboard } from 'grammy';
 import { supabase } from '../supabase.js';
 import { getSetting } from '../config.js';
 
-// Stockage temporaire des conversations (en mémoire, reset au redéploiement)
-// Pour la prod, on utilisera la DB mais ça suffit pour commencer
 const sessions = new Map();
 
 // =====================================================
@@ -14,21 +12,22 @@ export async function withdrawStart(ctx) {
 
   const { data: user } = await supabase
     .from('users')
-    .select('balance,total_withdrawn')
+    .select('withdrawable_balance')
     .eq('telegram_id', userId)
     .single();
 
   const minWithdraw = Number(await getSetting('min_withdraw')) || 2000;
+  const available = Number(user?.withdrawable_balance || 0);
 
-  if (user.balance < minWithdraw) {
-    const missing = minWithdraw - user.balance;
+  if (available < minWithdraw) {
+    const missing = minWithdraw - available;
     return ctx.reply(
       `💸 *Retrait*\n\n` +
-        `❌ Solde insuffisant.\n\n` +
-        `Ton solde : *${user.balance} Kobo*\n` +
-        `Minimum requis : *${minWithdraw} Kobo*\n` +
+        `❌ Solde retirable insuffisant.\n\n` +
+        `💰 Solde retirable : *${available} Kobo*\n` +
+        `📊 Minimum : *${minWithdraw} Kobo*\n` +
         `Il te manque : *${missing} Kobo*\n\n` +
-        `Continue à faire des tâches pour atteindre le seuil 💪`,
+        `🔄 Convertir tes Kobo d'abord via le bouton *Convertir*.`,
       { parse_mode: 'Markdown' }
     );
   }
@@ -48,7 +47,7 @@ export async function withdrawStart(ctx) {
 
   await ctx.reply(
     `💸 *Retrait*\n\n` +
-      `💰 Solde disponible : *${user.balance} Kobo*\n` +
+      `💰 Solde retirable : *${available} Kobo*\n` +
       `📊 Minimum : *${minWithdraw} Kobo*\n\n` +
       `Choisis la devise de retrait :`,
     { parse_mode: 'Markdown', reply_markup: kb }
@@ -96,7 +95,7 @@ export async function chooseMethod(ctx, method) {
 
   const { data: user } = await supabase
     .from('users')
-    .select('balance')
+    .select('withdrawable_balance')
     .eq('telegram_id', userId)
     .single();
 
@@ -104,9 +103,9 @@ export async function chooseMethod(ctx, method) {
 
   await ctx.editMessageText(
     `💸 *Retrait — ${session.currency} via ${formatMethod(method)}*\n\n` +
-      `💰 Solde : *${user.balance} Kobo*\n` +
+      `💰 Solde retirable : *${user.withdrawable_balance} Kobo*\n` +
       `📊 Minimum : *${minWithdraw} Kobo*\n\n` +
-      `✍️ Envoie le *montant en Kobo* à retirer (ex: \`2000\`)`,
+      `✍️ Envoie le *montant à retirer* (ex: \`2000\`)`,
     { parse_mode: 'Markdown' }
   );
 }
@@ -127,23 +126,21 @@ export async function handleAmountInput(ctx, text) {
 
   const { data: user } = await supabase
     .from('users')
-    .select('balance')
+    .select('withdrawable_balance')
     .eq('telegram_id', userId)
     .single();
 
   const minWithdraw = Number(await getSetting('min_withdraw')) || 2000;
+  const available = Number(user.withdrawable_balance || 0);
 
   if (amount < minWithdraw) {
-    await ctx.reply(
-      `❌ Le minimum est de *${minWithdraw} Kobo*. Réessaie.`,
-      { parse_mode: 'Markdown' }
-    );
+    await ctx.reply(`❌ Le minimum est de *${minWithdraw} Kobo*. Réessaie.`, { parse_mode: 'Markdown' });
     return true;
   }
 
-  if (amount > user.balance) {
+  if (amount > available) {
     await ctx.reply(
-      `❌ Solde insuffisant. Ton solde : *${user.balance} Kobo*. Réessaie.`,
+      `❌ Solde retirable insuffisant. Disponible : *${available} Kobo*.`,
       { parse_mode: 'Markdown' }
     );
     return true;
@@ -184,7 +181,7 @@ export async function handleDestinationInput(ctx, text) {
   await ctx.reply(
     `📋 *Récapitulatif*\n\n` +
       `💰 Montant : *${session.amount} Kobo*\n` +
-      `💱 Conversion : *${converted} ${session.currency}*\n` +
+      `💱 Tu recevras : *${converted} ${session.currency}*\n` +
       `📱 Méthode : ${formatMethod(session.method)}\n` +
       `📍 Destination : \`${session.destination}\`\n\n` +
       `Confirme pour envoyer ta demande.`,
@@ -206,20 +203,13 @@ export async function confirmWithdraw(ctx) {
   const rate = await getRate(session.currency);
   const converted = (session.amount * rate).toFixed(2);
 
-  // Débiter le solde
-  const ok = await supabase.rpc('debit_user', {
+  // Débiter le solde retirable
+  const { data: ok, error } = await supabase.rpc('debit_withdrawable', {
     p_user_id: userId,
     p_amount: session.amount,
-    p_type: 'withdrawal',
-    p_reference: null,
-    p_metadata: {
-      currency: session.currency,
-      method: session.method,
-      destination: session.destination,
-    },
   });
 
-  if (ok.error || ok.data === false) {
+  if (error || ok === false) {
     sessions.delete(userId);
     return ctx.answerCallbackQuery({ text: '❌ Solde insuffisant.', show_alert: true });
   }
@@ -239,7 +229,7 @@ export async function confirmWithdraw(ctx) {
     .select()
     .single();
 
-  // Incrémenter total_withdrawn
+  // Mettre à jour total_withdrawn
   await supabase.rpc('increment_withdrawn', {
     p_user_id: userId,
     p_amount: session.amount,
@@ -259,7 +249,6 @@ export async function confirmWithdraw(ctx) {
     { parse_mode: 'Markdown' }
   );
 
-  // Notifier les admins
   await notifyAdmins(ctx, session, converted, withdrawal?.id);
 }
 
@@ -297,7 +286,7 @@ export async function withdrawHistory(ctx) {
       w.status === 'paid' ? '✅' :
       w.status === 'pending' ? '⏳' :
       w.status === 'processing' ? '⚙️' : '❌';
-    text += `${icon} *${w.amount_kobo} Kobo* → ${w.amount_target} ${w.target_currency}\n`;
+    text += `${icon} *${w.amount_target} ${w.target_currency}*\n`;
     text += `   ${formatMethod(w.method)} · ${new Date(w.created_at).toLocaleDateString('fr-FR')}\n\n`;
   });
 
