@@ -1,5 +1,5 @@
 import { InlineKeyboard } from 'grammy';
-import { mainMenu } from '../utils/keyboards.js';
+import { mainMenu, persistentMenu } from '../utils/keyboards.js';
 import { getOrCreateUser } from '../utils/users.js';
 import { checkMandatoryChannels } from '../utils/checkChannel.js';
 
@@ -27,10 +27,25 @@ export async function startCommand(ctx) {
     );
   }
 
+  const name = ctx.from.first_name || ctx.from.username || 'Utilisateur';
+
+  // Message de bienvenue avec clavier persistant
   await ctx.reply(
     isNew
-      ? `🎉 Bienvenue sur *Kobo*, ${ctx.from.first_name} !\n\nTu as reçu *${user.balance} Kobo* à l'inscription.\n\nUtilise le menu ci-dessous pour commencer 👇`
-      : `👋 Re-bonjour ${ctx.from.first_name} !\n\nSolde : *${user.balance} Kobo*`,
-    { parse_mode: 'Markdown', reply_markup: mainMenu() }
+      ? `🎉 Bienvenue sur *Kobo*, ${name} !\n\nTu as reçu *${user.balance} Kobo* à l'inscription.\n\nUtilise le menu en bas de l'écran pour naviguer 👇`
+      : `👋 Re-bonjour ${name} !\n\nSolde : *${user.balance} Kobo*`,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: persistentMenu(),
+    }
+  );
+
+  // Petit message d'aide avec menu inline
+  await ctx.reply(
+    '📌 *Voici tes options rapides* :',
+    {
+      parse_mode: 'Markdown',
+      reply_markup: mainMenu(),
+    }
   );
 }
