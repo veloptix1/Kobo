@@ -2,6 +2,9 @@ import { InlineKeyboard } from 'grammy';
 import { supabase } from '../supabase.js';
 import { getSetting } from '../config.js';
 
+// =====================================================
+// LISTE DES TÂCHES
+// =====================================================
 export async function tasksCommand(ctx) {
   await showTasks(ctx, ctx.from.id);
 }
@@ -12,7 +15,7 @@ export async function showTasks(ctx, userId, edit = false) {
     .select('*')
     .eq('is_active', true)
     .order('id', { ascending: false })
-    .limit(10);
+    .limit(15);
 
   if (!tasks || tasks.length === 0) {
     const text = '📋 *Aucune tâche disponible pour le moment.*\n\nReviens plus tard !';
@@ -21,31 +24,61 @@ export async function showTasks(ctx, userId, edit = false) {
     return ctx.reply(text, { parse_mode: 'Markdown', reply_markup: kb });
   }
 
-  // Récupérer les tâches déjà faites par l'utilisateur
   const { data: done } = await supabase
     .from('task_completions')
-    .select('task_id, status')
+    .select('task_id, status, completed_at')
     .eq('user_id', userId);
 
-  const doneMap = new Map((done || []).map((d) => [d.task_id, d.status]));
+  const doneMap = new Map();
+  (done || []).forEach((d) => {
+    if (!doneMap.has(d.task_id)) doneMap.set(d.task_id, []);
+    doneMap.get(d.task_id).push(d);
+  });
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const kb = new InlineKeyboard();
-  let text = `📋 *Tâches disponibles* (${tasks.length})\n\n`;
+  let text = `📋 *Tâches disponibles*\n\n`;
+  let availableCount = 0;
 
-  tasks.forEach((t, i) => {
-    const status = doneMap.get(t.id);
-    const badge = status === 'approved' ? '✅' : status === 'pending' ? '⏳' : '';
-    text += `${i + 1}. ${badge} *${t.title}* — 💰 ${t.reward} Kobo\n`;
-    if (t.description) text += `   _${t.description}_\n`;
+  tasks.forEach((t) => {
+    const records = doneMap.get(t.id) || [];
+    const completedToday = records.filter(
+      (r) => new Date(r.completed_at) >= startOfDay && r.status !== 'rejected'
+    ).length;
+    const pending = records.some((r) => r.status === 'pending');
+    const totalDone = records.filter((r) => r.status === 'approved').length;
 
-    if (!status) {
+    let canDo = true;
+    let badge = '';
+
+    if (t.type === 'one_time' && totalDone > 0) {
+      canDo = false;
+      badge = ' ✅';
+    } else if (pending) {
+      canDo = false;
+      badge = ' ⏳';
+    } else if (t.daily_limit && completedToday >= t.daily_limit) {
+      canDo = false;
+      badge = ' ⏱️';
+    }
+
+    if (canDo) availableCount++;
+
+    text += `*${t.title}*${badge}\n`;
+    text += `💰 ${t.reward} Kobo`;
+    if (t.daily_limit > 1) text += ` · ${completedToday}/${t.daily_limit} aujourd'hui`;
+    text += `\n\n`;
+
+    if (canDo) {
       kb.text(`▶️ ${t.title}`, `task:view:${t.id}`).row();
-    } else if (status === 'pending') {
-      kb.text(`⏳ ${t.title} (en attente)`, `task:noop`).row();
-    } else {
-      kb.text(`✅ ${t.title} (terminée)`, `task:noop`).row();
     }
   });
+
+  if (availableCount === 0) {
+    text += '\n_Aucune tâche disponible pour le moment. Reviens plus tard !_';
+  }
 
   kb.text('🔙 Menu', 'menu:home');
 
@@ -55,6 +88,9 @@ export async function showTasks(ctx, userId, edit = false) {
   return ctx.reply(text, { parse_mode: 'Markdown', reply_markup: kb });
 }
 
+// =====================================================
+// VOIR UNE TÂCHE
+// =====================================================
 export async function viewTask(ctx, taskId) {
   const { data: task } = await supabase
     .from('tasks')
@@ -69,7 +105,13 @@ export async function viewTask(ctx, taskId) {
   let text = `🎯 *${task.title}*\n\n`;
   if (task.description) text += `${task.description}\n\n`;
   text += `💰 Récompense : *${task.reward} Kobo*\n`;
-  if (task.type === 'channel_join') text += `\n👉 Rejoins le canal puis clique sur "J'ai rejoint".`;
+  if (task.type === 'channel_join') {
+    text += `\n👉 Rejoins le canal puis clique sur "J'ai terminé".`;
+  } else if (task.type === 'watch_ad' || task.type === 'share_link') {
+    text += `\n👉 Ouvre le lien, accomplis l'action, puis clique sur "J'ai terminé".`;
+  } else if (task.type === 'custom') {
+    text += `\n👉 Envoie une capture d'écran comme preuve.`;
+  }
 
   const kb = new InlineKeyboard();
   if (task.link) {
@@ -81,6 +123,9 @@ export async function viewTask(ctx, taskId) {
   await ctx.editMessageText(text, { parse_mode: 'Markdown', reply_markup: kb });
 }
 
+// =====================================================
+// COMPLÉTER UNE TÂCHE
+// =====================================================
 export async function completeTask(ctx, taskId) {
   const userId = ctx.from.id;
 
@@ -95,25 +140,44 @@ export async function completeTask(ctx, taskId) {
     return ctx.answerCallbackQuery({ text: '❌ Tâche indisponible', show_alert: true });
   }
 
-  // Vérifier si déjà faite
+  // Vérif anti-spam
   const { data: existing } = await supabase
     .from('task_completions')
-    .select('id, status')
+    .select('id, status, completed_at')
     .eq('user_id', userId)
-    .eq('task_id', taskId)
-    .maybeSingle();
+    .eq('task_id', taskId);
 
-  if (existing) {
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const records = existing || [];
+
+  if (task.type === 'one_time' && records.some((r) => r.status === 'approved')) {
     return ctx.answerCallbackQuery({
-      text:
-        existing.status === 'approved'
-          ? '✅ Tu as déjà validé cette tâche.'
-          : '⏳ Ta tâche est déjà en attente de validation.',
+      text: '✅ Tu as déjà validé cette tâche.',
       show_alert: true,
     });
   }
 
-  // Vérif canaux obligatoires si la tâche est channel_join
+  if (records.some((r) => r.status === 'pending')) {
+    return ctx.answerCallbackQuery({
+      text: '⏳ Ta tâche est déjà en attente de validation.',
+      show_alert: true,
+    });
+  }
+
+  if (task.daily_limit) {
+    const doneToday = records.filter(
+      (r) => new Date(r.completed_at) >= startOfDay && r.status === 'approved'
+    ).length;
+    if (doneToday >= task.daily_limit) {
+      return ctx.answerCallbackQuery({
+        text: `⏱️ Tu as atteint la limite (${task.daily_limit}/jour). Reviens demain !`,
+        show_alert: true,
+      });
+    }
+  }
+
+  // Vérif canaux obligatoires si channel_join
   if (task.type === 'channel_join' && task.channel_id) {
     try {
       const member = await ctx.api.getChatMember(task.channel_id, userId);
@@ -125,44 +189,98 @@ export async function completeTask(ctx, taskId) {
       }
     } catch {
       return ctx.answerCallbackQuery({
-        text: '❌ Impossible de vérifier. Vérifie que tu as rejoint le canal.',
+        text: '❌ Impossible de vérifier. Rejoins le canal puis réessaie.',
         show_alert: true,
       });
     }
   }
 
-  // Créditer immédiatement (ou mettre en attente si mode manuel)
-  const autoApprove = true; // on activera un setting plus tard
+  // Mode : auto ou manuel
+  const autoApprove = await getSetting('task_auto_approve');
+  const requireProof = task.type === 'custom';
 
-  if (autoApprove) {
-    await supabase.from('task_completions').insert({
-      user_id: userId,
-      task_id: taskId,
-      status: 'approved',
-      reward_paid: task.reward,
-    });
-
-    await supabase.rpc('credit_user', {
-      p_user_id: userId,
-      p_amount: task.reward,
-      p_type: 'task',
-      p_reference: String(taskId),
-      p_metadata: { task_title: task.title, task_type: task.type },
-    });
-
-    await ctx.answerCallbackQuery({ text: `✅ +${task.reward} Kobo !`, show_alert: true });
-  } else {
+  if (requireProof || autoApprove === false) {
+    // Demander une preuve
     await supabase.from('task_completions').insert({
       user_id: userId,
       task_id: taskId,
       status: 'pending',
     });
-    await ctx.answerCallbackQuery({
-      text: '⏳ Tâche enregistrée. En attente de validation.',
+
+    await ctx.answerCallbackQuery();
+    await ctx.reply(
+      `📸 *Preuve requise*\n\nEnvoie une capture d'écran ou un texte comme preuve pour *${task.title}*.\n\nLe montant sera crédité après validation.`,
+      { parse_mode: 'Markdown' }
+    );
+    return;
+  }
+
+  // Crédit immédiat
+  await supabase.from('task_completions').insert({
+    user_id: userId,
+    task_id: taskId,
+    status: 'approved',
+    reward_paid: task.reward,
+  });
+
+  await supabase.rpc('credit_user', {
+    p_user_id: userId,
+    p_amount: task.reward,
+    p_type: 'task',
+    p_reference: String(taskId),
+    p_metadata: { task_title: task.title, task_type: task.type },
+  });
+
+  await ctx.answerCallbackQuery({
+    text: `✅ +${task.reward} Kobo !`,
+    show_alert: true,
+  });
+
+  // Rafraîchir la liste
+  await showTasks(ctx, userId, true);
+}
+
+// =====================================================
+// CHECK-IN QUOTIDIEN
+// =====================================================
+export async function dailyCheckin(ctx) {
+  const userId = ctx.from.id;
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data: existing } = await supabase
+    .from('task_completions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('task_id', -1)
+    .gte('completed_at', `${today}T00:00:00`)
+    .maybeSingle();
+
+  if (existing) {
+    return ctx.answerCallbackQuery({
+      text: '⏱️ Tu as déjà fait ton check-in aujourd\'hui. Reviens demain !',
       show_alert: true,
     });
   }
 
-  // Rafraîchir la liste
-  await showTasks(ctx, userId, true);
+  const bonus = Number(await getSetting('daily_checkin')) || 10;
+
+  await supabase.from('task_completions').insert({
+    user_id: userId,
+    task_id: -1,
+    status: 'approved',
+    reward_paid: bonus,
+  });
+
+  await supabase.rpc('credit_user', {
+    p_user_id: userId,
+    p_amount: bonus,
+    p_type: 'task',
+    p_reference: 'daily_checkin',
+    p_metadata: { type: 'daily_checkin' },
+  });
+
+  await ctx.answerCallbackQuery({
+    text: `🎁 +${bonus} Kobo ! Reviens demain.`,
+    show_alert: true,
+  });
 }
