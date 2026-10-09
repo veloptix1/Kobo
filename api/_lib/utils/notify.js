@@ -8,14 +8,16 @@ export async function notifyUser(api, telegramId, message, options = {}) {
       .eq('telegram_id', telegramId)
       .maybeSingle();
 
-    if (!user || user.is_banned) return false;
+    if (!user || user.is_banned) {
+      console.log(`Notify skip user ${telegramId}: ${!user ? 'not found' : 'banned'}`);
+      return false;
+    }
 
     await api.sendMessage(telegramId, message, {
       parse_mode: 'Markdown',
       ...options,
     });
 
-    // Enregistrer dans l'historique (sans bloquer si erreur)
     try {
       await supabase.from('notifications').insert({
         user_id: telegramId,
@@ -34,9 +36,6 @@ export async function notifyUser(api, telegramId, message, options = {}) {
   }
 }
 
-// ============================================================
-// Nouveau filleul inscrit
-// ============================================================
 export async function notifyReferralSignup(api, referrerId, referredName, bonus) {
   const msg =
     `🎉 *Nouveau filleul !*\n\n` +
@@ -46,9 +45,6 @@ export async function notifyReferralSignup(api, referrerId, referredName, bonus)
   return notifyUser(api, referrerId, msg, { type: 'referral_signup' });
 }
 
-// ============================================================
-// Retrait payé
-// ============================================================
 export async function notifyWithdrawalPaid(api, userId, amount, currency, method) {
   const msg =
     `✅ *Retrait payé !*\n\n` +
@@ -58,9 +54,6 @@ export async function notifyWithdrawalPaid(api, userId, amount, currency, method
   return notifyUser(api, userId, msg, { type: 'withdrawal_paid' });
 }
 
-// ============================================================
-// Retrait refusé
-// ============================================================
 export async function notifyWithdrawalRejected(api, userId, amount, currency) {
   const msg =
     `❌ *Retrait refusé*\n\n` +
@@ -69,9 +62,6 @@ export async function notifyWithdrawalRejected(api, userId, amount, currency) {
   return notifyUser(api, userId, msg, { type: 'withdrawal_rejected' });
 }
 
-// ============================================================
-// Tâche validée
-// ============================================================
 export async function notifyTaskApproved(api, userId, taskTitle, reward) {
   const msg =
     `✅ *Tâche validée !*\n\n` +
@@ -81,9 +71,6 @@ export async function notifyTaskApproved(api, userId, taskTitle, reward) {
   return notifyUser(api, userId, msg, { type: 'task_approved' });
 }
 
-// ============================================================
-// Tâche refusée
-// ============================================================
 export async function notifyTaskRejected(api, userId, taskTitle) {
   const msg =
     `❌ *Tâche refusée*\n\n` +
@@ -92,9 +79,6 @@ export async function notifyTaskRejected(api, userId, taskTitle) {
   return notifyUser(api, userId, msg, { type: 'task_rejected' });
 }
 
-// ============================================================
-// Conversion réussie
-// ============================================================
 export async function notifyConversion(api, userId, kobo, converted, currency) {
   const msg =
     `🔄 *Conversion réussie*\n\n` +

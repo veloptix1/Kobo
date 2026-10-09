@@ -4,6 +4,9 @@ import { getSetting } from '../config.js';
 
 const sessions = new Map();
 
+// =====================================================
+// HELPERS
+// =====================================================
 async function koboToCurrency(kobo, currency) {
   const key = `kobo_to_${currency.toLowerCase()}`;
   const rate = Number(await getSetting(key)) || 1;
@@ -24,7 +27,16 @@ function formatAmount(n) {
   return num.toFixed(6);
 }
 
-// Wrapper qui ignore l'erreur "message is not modified"
+function formatMethod(m) {
+  const names = {
+    orange_money: 'Orange Money',
+    mtn: 'MTN Mobile Money',
+    wave: 'Wave',
+    usdt: 'USDT (TRC20)',
+  };
+  return names[m] || m;
+}
+
 async function safeEdit(ctx, text, options = {}) {
   try {
     await ctx.editMessageText(text, options);
@@ -268,10 +280,15 @@ export async function confirmWithdraw(ctx) {
     .select()
     .single();
 
-  await supabase.rpc('increment_withdrawn', {
-    p_user_id: userId,
-    p_amount: session.amountKobo,
-  }).catch(() => {});
+  // Incrémenter total_withdrawn
+  try {
+    await supabase.rpc('increment_withdrawn', {
+      p_user_id: userId,
+      p_amount: session.amountKobo,
+    });
+  } catch (e) {
+    console.error('increment_withdrawn failed:', e.message);
+  }
 
   sessions.delete(userId);
 
@@ -290,7 +307,7 @@ export async function confirmWithdraw(ctx) {
   // 🔔 Notifier le canal retrait (SANS infos perso)
   await notifyWithdrawalChannel(ctx, session, withdrawal?.id);
 
-  // 🔔 Notifier les admins (avec infos perso)
+  // 🔔 Notifier les admins (avec infos complètes)
   await notifyAdmins(ctx, session, withdrawal?.id);
 }
 
@@ -336,30 +353,15 @@ export async function withdrawHistory(ctx) {
 }
 
 // =====================================================
-// HELPERS
+// CANAL RETRAIT (public, sans infos perso)
 // =====================================================
-function formatMethod(m) {
-  const names = {
-    orange_money: 'Orange Money',
-    mtn: 'MTN Mobile Money',
-    wave: 'Wave',
-    usdt: 'USDT (TRC20)',
-  };
-  return names[m] || m;
-}
-
-// 📢 Message dans le canal retrait (SANS données perso)
 async function notifyWithdrawalChannel(ctx, session, withdrawalId) {
   const channelId = await getSetting('withdrawal_channel_id');
-  if (!channelId) {
-    console.log('Pas de canal retrait configuré');
-    return;
-  }
+  if (!channelId) return;
 
   const now = new Date().toLocaleString('fr-FR', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -370,7 +372,7 @@ async function notifyWithdrawalChannel(ctx, session, withdrawalId) {
     `💰 Montant : *${formatAmount(session.amount)} ${session.currency}*\n` +
     `📱 Méthode : ${formatMethod(session.method)}\n` +
     `📅 Date : ${now}\n\n` +
-    `⏳ En attente de traitement par l'équipe.`;
+    `⏳ En attente de traitement.`;
 
   try {
     await ctx.api.sendMessage(channelId, text, { parse_mode: 'Markdown' });
@@ -379,9 +381,12 @@ async function notifyWithdrawalChannel(ctx, session, withdrawalId) {
   }
 }
 
-// 🔒 Notification admins (avec données complètes)
+// =====================================================
+// NOTIF ADMIN (avec infos complètes)
+// =====================================================
 async function notifyAdmins(ctx, session, withdrawalId) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+
   const text =
     `🔔 *Nouvelle demande de retrait*\n\n` +
     `👤 User ID : \`${ctx.from.id}\`\n` +
