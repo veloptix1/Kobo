@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { verifyTelegramInitData } from '@/lib/telegram';
 
+const RATE = 0.7; // 1 Kobo = 0,7 FCFA
+
 export async function POST(req) {
   const { initData, action, amount, direction } = await req.json();
   const tgUser = verifyTelegramInitData(initData, process.env.BOT_TOKEN);
@@ -20,7 +22,7 @@ export async function POST(req) {
     const { data: settings } = await supabaseAdmin
       .from('settings')
       .select('key, value')
-      .in('key', ['min_convert', 'kobo_to_fcfa', 'kobo_to_xof', 'kobo_to_usdt', 'convert_enabled', 'convert_fee_percent']);
+      .in('key', ['min_convert', 'convert_enabled', 'convert_fee_percent']);
 
     const s = Object.fromEntries((settings || []).map((x) => [x.key, x.value]));
 
@@ -31,10 +33,8 @@ export async function POST(req) {
       currency: user?.real_currency || 'FCFA',
       enabled: s.convert_enabled !== false,
       min_convert: Number(s.min_convert) || 100,
-      rate_fcfa: Number(s.kobo_to_fcfa) || 1,
-      rate_xof: Number(s.kobo_to_xof) || 1,
-      rate_usdt: Number(s.kobo_to_usdt) || 0.002,
       fee_percent: Number(s.convert_fee_percent) || 0,
+      rate: RATE,
     });
   }
 
@@ -62,20 +62,21 @@ export async function POST(req) {
 
     if (s.convert_enabled === false) return NextResponse.json({ error: 'Conversion désactivée' }, { status: 400 });
 
+    // ===== Kobo → Réel =====
     if (direction === 'kobo_to_real') {
-      // Kobo → Argent réel (1:1 avec FCFA)
       if (amt < minConvert) return NextResponse.json({ error: `Minimum ${minConvert} Kobo` }, { status: 400 });
       if (Number(user.balance) < amt) return NextResponse.json({ error: 'Solde Kobo insuffisant' }, { status: 400 });
 
-      const fee = amt * feePercent / 100;
-      const received = amt - fee;
+      const amountInReal = amt * RATE;
+      const fee = amountInReal * feePercent / 100;
+      const received = amountInReal - fee;
 
       await supabaseAdmin.from('users').update({ balance: Number(user.balance) - amt }).eq('telegram_id', userId);
       await supabaseAdmin.from('users').update({ real_balance: Number(user.real_balance) + received }).eq('telegram_id', userId);
 
       await supabaseAdmin.from('transactions').insert({
         user_id: userId, amount: -amt, type: 'convert',
-        metadata: { direction, from: 'kobo', to: 'real', received, fee },
+        metadata: { direction, from: 'kobo', to: 'real', received, fee, rate: RATE },
       });
 
       await supabaseAdmin.from('activity_logs').insert({
@@ -83,23 +84,24 @@ export async function POST(req) {
         details: { amount: amt, received, fee },
       }).then(() => {}).catch(() => {});
 
-      return NextResponse.json({ ok: true, received, fee });
+      return NextResponse.json({ ok: true, received, fee, rate: RATE });
     }
 
+    // ===== Réel → Kobo =====
     if (direction === 'real_to_kobo') {
-      // Argent réel → Kobo (1:1)
-      if (amt < minConvert) return NextResponse.json({ error: `Minimum ${minConvert} FCFA` }, { status: 400 });
+      if (amt < minConvert) return NextResponse.json({ error: `Minimum ${minConvert} ${user.real_currency || 'FCFA'}` }, { status: 400 });
       if (Number(user.real_balance) < amt) return NextResponse.json({ error: 'Solde réel insuffisant' }, { status: 400 });
 
-      const fee = amt * feePercent / 100;
-      const received = amt - fee;
+      const amountInKobo = amt / RATE;
+      const fee = amountInKobo * feePercent / 100;
+      const received = amountInKobo - fee;
 
       await supabaseAdmin.from('users').update({ real_balance: Number(user.real_balance) - amt }).eq('telegram_id', userId);
-      await supabaseAdmin.from('users').update({ balance: Number(user.balance) + received, total_earned: 0 }).eq('telegram_id', userId);
+      await supabaseAdmin.from('users').update({ balance: Number(user.balance) + received }).eq('telegram_id', userId);
 
       await supabaseAdmin.from('transactions').insert({
         user_id: userId, amount: received, type: 'convert',
-        metadata: { direction, from: 'real', to: 'kobo', fee },
+        metadata: { direction, from: 'real', to: 'kobo', fee, rate: RATE },
       });
 
       await supabaseAdmin.from('activity_logs').insert({
@@ -107,7 +109,7 @@ export async function POST(req) {
         details: { amount: amt, received, fee },
       }).then(() => {}).catch(() => {});
 
-      return NextResponse.json({ ok: true, received, fee });
+      return NextResponse.json({ ok: true, received, fee, rate: RATE });
     }
 
     return NextResponse.json({ error: 'Direction inconnue' }, { status: 400 });

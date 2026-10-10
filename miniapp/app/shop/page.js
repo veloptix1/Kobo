@@ -13,6 +13,8 @@ export default function Shop() {
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState(null);
 
+  const RATE = 0.7; // 1 Kobo = 0,7 FCFA
+
   async function load() {
     const initData = window.Telegram?.WebApp?.initData;
     if (!initData) { setLoading(false); return; }
@@ -39,11 +41,7 @@ export default function Shop() {
     const r = await fetch('/api/shop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initData, action: 'buy',
-        packId: selectedPack.id,
-        method, destination, proof,
-      }),
+      body: JSON.stringify({ initData, action: 'buy', packId: selectedPack.id, method, destination, proof }),
     });
     const d = await r.json();
     setSending(false);
@@ -83,14 +81,13 @@ export default function Shop() {
         <div className="rounded-2xl p-4 mb-5 bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 text-center">
           <div className="text-xs text-gray-500 mb-1">Ton solde Kobo</div>
           <div className="text-3xl font-black text-orange-600">{Math.round(data.balance).toLocaleString('fr-FR')}</div>
-          <div className="text-xs text-gray-500 mt-1">≈ {Math.round(data.balance * 0.7).toLocaleString('fr-FR')} FCFA</div>
+          <div className="text-xs text-gray-500 mt-1">≈ {Math.round(data.balance * RATE).toLocaleString('fr-FR')} FCFA</div>
         </div>
 
-        {data.instructions && (
-          <div className="rounded-xl p-3 mb-5 bg-amber-50 border border-amber-200 text-xs text-amber-800 leading-relaxed">
-            ℹ️ {data.instructions}
-          </div>
-        )}
+        <div className="rounded-xl p-3 mb-5 bg-blue-50 border border-blue-200 text-xs text-blue-800 leading-relaxed">
+          📌 Taux : <b>1 Kobo = 0,7 FCFA</b>
+          {data.instructions && <div className="mt-2">ℹ️ {data.instructions}</div>}
+        </div>
 
         {!selectedPack ? (
           <>
@@ -114,6 +111,7 @@ export default function Shop() {
                     <div className="text-right">
                       <div className="text-lg font-black text-orange-600">{Math.round(p.kobo_amount).toLocaleString('fr-FR')}</div>
                       <div className="text-xs text-gray-500">Kobo</div>
+                      <div className="text-[10px] text-gray-400 mt-1">≈ {Math.round(p.kobo_amount * RATE).toLocaleString('fr-FR')} FCFA</div>
                       {p.bonus_percent > 0 && (
                         <div className="text-xs text-emerald-600 font-bold mt-1">+{p.bonus_percent}% bonus</div>
                       )}
@@ -130,8 +128,14 @@ export default function Shop() {
                 <span className="text-2xl">{selectedPack.icon}</span>
                 <span className="font-bold text-gray-800">{selectedPack.name}</span>
               </div>
+              <div className="text-sm text-gray-700 mb-2">
+                Paie <b>{Math.round(selectedPack.price).toLocaleString('fr-FR')} {selectedPack.currency}</b>
+              </div>
               <div className="text-sm text-gray-700">
-                Paie <b>{Math.round(selectedPack.price).toLocaleString('fr-FR')} {selectedPack.currency}</b> → reçois <b className="text-orange-600">{Math.round(selectedPack.kobo_amount + selectedPack.kobo_amount * selectedPack.bonus_percent / 100).toLocaleString('fr-FR')} Kobo</b>
+                Reçois <b className="text-orange-600">{Math.round(selectedPack.kobo_amount + selectedPack.kobo_amount * selectedPack.bonus_percent / 100).toLocaleString('fr-FR')} Kobo</b>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Valeur réelle : {Math.round((selectedPack.kobo_amount + selectedPack.kobo_amount * selectedPack.bonus_percent / 100) * RATE).toLocaleString('fr-FR')} FCFA
               </div>
             </div>
 
@@ -139,11 +143,7 @@ export default function Shop() {
               <label className="block text-sm font-bold text-gray-700 mb-2">Méthode de paiement</label>
               <div className="grid grid-cols-2 gap-2">
                 {data.methods.map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setMethod(m)}
-                    className={`py-3 rounded-xl text-sm font-semibold ${method === m ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}
-                  >
+                  <button key={m} onClick={() => setMethod(m)} className={`py-3 rounded-xl text-sm font-semibold ${method === m ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
                     {methodLabels[m] || m}
                   </button>
                 ))}
@@ -158,7 +158,6 @@ export default function Shop() {
                   </label>
                   <input value={destination} onChange={e => setDestination(e.target.value)} placeholder={method === 'usdt' ? 'TXxx...' : '+237 6XX XXX XXX'} className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none" />
                 </div>
-
                 <div className="form-group mb-4">
                   <label className="block text-sm font-bold text-gray-700 mb-2">ID de transaction (optionnel)</label>
                   <input value={proof} onChange={e => setProof(e.target.value)} placeholder="Ex: TXN123456" className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-orange-500 outline-none" />

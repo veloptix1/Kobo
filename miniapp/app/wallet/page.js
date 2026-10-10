@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Nav from '@/components/Nav';
 
+const RATE = 0.7; // 1 Kobo = 0,7 FCFA
+
 export default function Wallet() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,12 +45,22 @@ export default function Wallet() {
   if (!data) return <div className="p-8 text-center text-gray-500">Ouvre depuis le bot.</div>;
 
   const typeLabels = {
-    signup: '🎁 Bonus inscription', task: '🎯 Tâche', referral: '👥 Parrainage',
-    withdrawal: '💸 Retrait', admin_adjust: '⚙️ Ajustement', convert: '🔄 Conversion',
+    signup: '🎁 Bonus inscription',
+    task: '🎯 Tâche',
+    referral: '👥 Parrainage',
+    withdrawal: '💸 Retrait',
+    admin_adjust: '⚙️ Ajustement',
+    convert: '🔄 Conversion',
     marketplace: '🛒 Achat marketplace',
+    kobo_purchase: '🛒 Achat de Kobo',
+    mining: '⛏️ Minage',
+    vip: '💎 VIP',
   };
   const statusLabels = {
-    pending: '⏳ En attente', paid: '✅ Payé', rejected: '❌ Refusé', processing: '⚙️ En cours',
+    pending: '⏳ En attente',
+    paid: '✅ Payé',
+    rejected: '❌ Refusé',
+    processing: '⚙️ En cours',
   };
 
   return (
@@ -65,9 +77,14 @@ export default function Wallet() {
             {Math.round(data.real_balance).toLocaleString('fr-FR')}
           </div>
           <div className="text-emerald-600 text-sm font-semibold mb-4">{data.currency}</div>
-          <Link href="/recharge" className="block w-full py-3 rounded-xl text-center font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg">
-            ➕ Recharger
-          </Link>
+          <div className="grid grid-cols-2 gap-2">
+            <Link href="/recharge" className="block py-3 rounded-xl text-center font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg text-sm">
+              ➕ Recharger
+            </Link>
+            <Link href="/shop" className="block py-3 rounded-xl text-center font-bold text-white bg-gradient-to-r from-amber-500 to-orange-600 shadow-lg text-sm">
+              🛒 Boutique
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -77,11 +94,12 @@ export default function Wallet() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-amber-700 text-xs font-semibold">🪙 Solde Kobo</div>
-              <div className="text-2xl font-black text-orange-600">{Math.round(data.user.balance || 0)}</div>
+              <div className="text-2xl font-black text-orange-600">{Math.round(data.user.balance || 0).toLocaleString('fr-FR')}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-gray-500">≈ {Math.round(data.user.balance || 0)} FCFA</div>
-              <Link href="/wallet/convert" className="text-xs text-orange-600 font-bold underline">Convertir</Link>
+              <div className="text-xs text-gray-500">≈ {Math.round((data.user.balance || 0) * RATE).toLocaleString('fr-FR')} FCFA</div>
+              <div className="text-[10px] text-gray-400 mt-1">1 Kobo = 0,7 FCFA</div>
+              <Link href="/wallet/convert" className="text-xs text-orange-600 font-bold underline">🔄 Convertir</Link>
             </div>
           </div>
         </div>
