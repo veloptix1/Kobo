@@ -1,0 +1,14 @@
+  <div class="panel" id="panel-marketplace-admin">
+    <div class="admin-toolbar">
+      <h2>🛒 Annonces utilisateurs</h2>
+      <span class="badge orange" id="mpPendingBadge">—</span>
+    </div>
+    <div class="filter-row" id="mpFilters" style="margin-bottom:14px;">
+      <button class="filter-chip active" data-filter="pending">⏳ En attente</button>
+      <button class="filter-chip" data-filter="active">✅ Actives</button>
+      <button class="filter-chip" data-filter="rejected">❌ Rejetées</button>
+      <button class="filter-chip" data-filter="all">📋 Toutes</button>
+    </div>
+    <input type="text" class="search-full" id="mpSearch" placeholder="🔍 Rechercher une annonce..." oninput="renderMpAds()">
+    <div id="mpList"></div>
+  </div>

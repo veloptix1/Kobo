@@ -136,6 +136,7 @@
   <button class="tab" data-tab="settings">⚙️ Réglages</button>
   <button class="tab" data-tab="broadcast">📢 Annonce</button>
   <button class="tab" data-tab="advertisers">🏢 Annonceurs</button>
+  <button class="tab" data-tab="marketplace-admin">🛒 Annonces user</button>
 </nav>
 
 <main class="content">
@@ -230,6 +231,20 @@
     <div id="admin2-content">
       <div class="empty">Chargement...</div>
     </div>
+  </div>
+  <div class="panel" id="panel-marketplace-admin">
+    <div class="admin-toolbar">
+      <h2>🛒 Annonces utilisateurs</h2>
+      <span class="badge orange" id="mpPendingBadge">—</span>
+    </div>
+    <div class="filter-row" id="mpFilters" style="margin-bottom:14px;">
+      <button class="filter-chip active" data-filter="pending">⏳ En attente</button>
+      <button class="filter-chip" data-filter="active">✅ Actives</button>
+      <button class="filter-chip" data-filter="rejected">❌ Rejetées</button>
+      <button class="filter-chip" data-filter="all">📋 Toutes</button>
+    </div>
+    <input type="text" class="search-full" id="mpSearch" placeholder="🔍 Rechercher une annonce..." oninput="renderMpAds()">
+    <div id="mpList"></div>
   </div>
 </main>
 
@@ -934,6 +949,150 @@ async function unbanUser(id) {
   DATA.admins = DATA.users.filter(u => u.is_admin);
   renderUsers(); renderBans();
 }
+
+// ============================================================
+// ADMIN MARKETPLACE — MODÉRATION
+// ============================================================
+let MP_ADS = [];
+let MP_REPORTS = [];
+let MP_FILTER = 'pending';
+
+async function loadMarketplaceAdmin() {
+  const list = document.getElementById('mpList');
+  if (!list) return;
+  list.innerHTML = '<div class="empty">Chargement...</div>';
+
+  try {
+    const r = await fetch('/admin/api/admin/marketplace?status=' + MP_FILTER);
+    const d = await r.json();
+    if (!d.ok) { list.innerHTML = emptyBox('Erreur : ' + (d.error || '?')); return; }
+
+    MP_ADS = d.ads || [];
+    MP_REPORTS = d.reports || [];
+
+    const pendingCount = MP_ADS.filter(a => a.status === 'pending').length;
+    const badge = document.getElementById('mpPendingBadge');
+    if (badge) badge.textContent = pendingCount + ' en attente';
+
+    renderMpAds();
+    renderMpReports();
+  } catch (e) {
+    list.innerHTML = emptyBox('Erreur : ' + e.message);
+  }
+}
+
+function renderMpAds() {
+  const list = document.getElementById('mpList');
+  if (!list) return;
+
+  const q = (document.getElementById('mpSearch')?.value || '').toLowerCase().trim();
+  let f = MP_ADS;
+  if (q) f = f.filter(a => (a.title || '').toLowerCase().includes(q) || (a.description || '').toLowerCase().includes(q) || (a.category || '').toLowerCase().includes(q));
+
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucune annonce'); return; }
+
+  list.innerHTML = f.map(a => {
+    const seller = a.users?.first_name || a.users?.username || 'Vendeur';
+    const sellerId = a.users?.telegram_id || a.seller_id;
+    const statusMap = {
+      pending: { l: '⏳ En attente', c: 'orange' },
+      active: { l: '✅ Active', c: 'green' },
+      rejected: { l: '❌ Rejetée', c: 'red' },
+      paused: { l: '⏸️ En pause', c: 'gray' },
+      deleted: { l: '🗑️ Supprimée', c: 'gray' },
+    };
+    const s = statusMap[a.status] || { l: a.status, c: 'gray' };
+
+    return '<div class="item-card">' +
+      '<div class="ic-img">🛒</div>' +
+      '<div class="ic-body">' +
+        '<div class="ic-name">' + escapeHtml(a.title) + ' <span class="badge ' + s.c + '">' + s.l + '</span>' +
+          (a.boosted ? ' <span class="badge gold">🚀 Boost</span>' : '') +
+          (a.broadcast_to_channels ? ' <span class="badge blue">📢 Canaux</span>' : '') +
+        '</div>' +
+        '<div class="ic-meta"><span>💰 ' + Math.round(a.price) + ' ' + (a.currency === 'real' ? 'FCFA' : 'Kobo') + '</span><span class="dot">•</span><span>' + escapeHtml(a.category) + '</span></div>' +
+        '<div class="ic-meta"><span>👤 ' + escapeHtml(seller) + '</span><span class="dot">•</span><span>ID ' + sellerId + '</span></div>' +
+        '<div class="ic-meta" style="font-size:10.5px;"><span>' + timeAgo(a.created_at) + '</span><span class="dot">•</span><span>' + a.sold + '/' + (a.places || '∞') + ' vendu</span></div>' +
+        (a.description ? '<div class="ic-desc">' + escapeHtml(a.description.slice(0, 150)) + (a.description.length > 150 ? '...' : '') + '</div>' : '') +
+        (a.admin_note ? '<div class="ic-desc" style="background:rgba(220,38,38,.1);border-radius:6px;padding:6px;margin-top:6px;color:#b91c1c;">📝 ' + escapeHtml(a.admin_note) + '</div>' : '') +
+      '</div>' +
+      '<div class="ic-actions">' +
+        (a.status === 'pending' ?
+          '<button class="icon-btn" onclick="mpApprove(' + a.id + ')" title="Approuver">✅</button>' +
+          '<button class="icon-btn" onclick="mpReject(' + a.id + ')" title="Rejeter">❌</button>' +
+          '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
+          :
+          '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
+        ) +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderMpReports() {
+  if (!MP_REPORTS || MP_REPORTS.length === 0) return;
+  const list = document.getElementById('mpList');
+  if (!list) return;
+
+  const html = '<h3 style="font-weight:800;color:#b91c1c;margin:20px 0 10px;">🚨 Signalements (' + MP_REPORTS.length + ')</h3>' +
+    MP_REPORTS.map(r => '<div class="item-card" style="border-left:4px solid #dc2626;"><div class="ic-img" style="background:rgba(220,38,38,.1);">⚠️</div><div class="ic-body"><div class="ic-name">' + escapeHtml(r.marketplace_ads?.title || 'Annonce supprimée') + '</div><div class="ic-meta"><span>👤 ' + escapeHtml(r.users?.first_name || r.users?.username || 'Utilisateur') + '</span></div><div class="ic-desc">🚩 ' + escapeHtml(r.reason) + (r.details ? '<br>' + escapeHtml(r.details) : '') + '</div></div></div>').join('');
+
+  list.innerHTML += html;
+}
+
+async function mpApprove(adId) {
+  if (!confirm('Approuver cette annonce ?')) return;
+  const r = await fetch('/admin/api/admin/marketplace', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ adId, action: 'approve' }),
+  });
+  const d = await r.json();
+  if (d.error) return showToast('Erreur : ' + d.error, true);
+  showToast('✅ Approuvée');
+  loadMarketplaceAdmin();
+}
+
+async function mpReject(adId) {
+  const reason = prompt('Motif du rejet :');
+  if (reason === null) return;
+  if (!reason.trim()) return showToast('Motif requis', true);
+
+  const r = await fetch('/admin/api/admin/marketplace', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ adId, action: 'reject', reason }),
+  });
+  const d = await r.json();
+  if (d.error) return showToast('Erreur : ' + d.error, true);
+  showToast('❌ Rejetée + remboursée');
+  loadMarketplaceAdmin();
+}
+
+async function mpDelete(adId) {
+  if (!confirm('Supprimer définitivement cette annonce ?')) return;
+  await fetch('/admin/api/admin/marketplace', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ adId, action: 'delete' }),
+  });
+  showToast('Supprimée');
+  loadMarketplaceAdmin();
+}
+
+document.getElementById('mpFilters')?.addEventListener('click', (e) => {
+  const c = e.target.closest('.filter-chip'); if (!c) return;
+  document.querySelectorAll('#mpFilters .filter-chip').forEach(x => x.classList.remove('active'));
+  c.classList.add('active');
+  MP_FILTER = c.dataset.filter;
+  loadMarketplaceAdmin();
+});
+
+// Charger au clic sur l'onglet
+document.getElementById('tabs')?.addEventListener('click', (e) => {
+  const t = e.target.closest('.tab');
+  if (t && t.dataset.tab === 'marketplace-admin') loadMarketplaceAdmin();
+});
 </script>
 </body>
 </html>
