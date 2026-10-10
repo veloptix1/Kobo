@@ -215,6 +215,22 @@
     <input type="text" class="search-full" id="advSearch" placeholder="🔍 Rechercher..." oninput="renderAdvertisers()">
     <div id="advertisersList"></div>
   </div>
+  <div class="panel" id="panel-admin2">
+    <div class="admin-toolbar">
+      <h2>🛡️ Admin 2 — Sécurité</h2>
+      <span class="badge orange" id="admin2AlertCount">—</span>
+    </div>
+    <div class="filter-row" id="admin2Tabs" style="margin-bottom:14px;">
+      <button class="filter-chip active" data-sub="logs">📋 Logs</button>
+      <button class="filter-chip" data-sub="alerts">🚨 Alertes</button>
+      <button class="filter-chip" data-sub="devices">📱 Devices</button>
+      <button class="filter-chip" data-sub="counters">📊 Compteurs</button>
+      <button class="filter-chip" data-sub="bans">🚫 Bans</button>
+    </div>
+    <div id="admin2-content">
+      <div class="empty">Chargement...</div>
+    </div>
+  </div>
 </main>
 
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
