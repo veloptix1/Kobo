@@ -261,6 +261,10 @@
 <div class="toast" id="toast"><span id="toastText">—</span></div>
 
 <script>
+
+// ============================================================
+// UTILITAIRES
+// ============================================================
 const API = '/admin/api/admin/data';
 
 async function apiGet(resource) {
@@ -269,8 +273,7 @@ async function apiGet(resource) {
 }
 async function apiSend(resource, method, body) {
   const r = await fetch(API + '?resource=' + resource, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
+    method, headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
   return r.json();
@@ -279,38 +282,92 @@ async function apiSend(resource, method, body) {
 let DATA = { retraits: [], tasks: [], users: [], settings: [], admins: [] };
 let RETRAIT_FILTER = 'pending';
 let ADV_DATA = [];
+let ADMIN2_TAB = 'logs';
+let MP_ADS = [];
+let MP_REPORTS = [];
+let MP_STATS = {};
+let MP_FILTER = 'pending';
 
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function emptyBox(msg) { return '<div class="empty">' + msg + '</div>'; }
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60) return 'À l\'instant';
+  if (diff < 3600) return 'Il y a ' + Math.floor(diff/60) + ' min';
+  if (diff < 86400) return 'Il y a ' + Math.floor(diff/3600) + ' h';
+  if (diff < 604800) return 'Il y a ' + Math.floor(diff/86400) + ' j';
+  return new Date(iso).toLocaleDateString('fr-FR');
+}
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+function openModal(title, html) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); document.body.style.overflow = ''; }
+function closeModalOutside(e) { if (e.target.id === 'modalOverlay') closeModal(); }
+
+// ============================================================
+// INIT
+// ============================================================
 (async function init() {
+  const loader = document.getElementById('loader');
   try {
-    setTimeout(() => { const l = document.getElementById("loader"); if (l) l.classList.add("hidden"); }, 300);
     const [retraits, tasks, users, settings] = await Promise.all([
-      apiGet('withdrawals'), apiGet('tasks'), apiGet('users'), apiGet('settings'),
+      apiGet('withdrawals'),
+      apiGet('tasks'),
+      apiGet('users'),
+      apiGet('settings'),
     ]);
     DATA.retraits = retraits.data || [];
     DATA.tasks = tasks.data || [];
     DATA.users = users.data || [];
     DATA.settings = settings.data || [];
     DATA.admins = DATA.users.filter(u => u.is_admin);
-    await loadStats();
-    renderRetraits(); renderTasks(); renderUsers(); renderAdmins();
-    renderParrainage(); renderSettings(); loadAdvertisers();
+
+    try { await loadStats(); } catch (e) { console.error('loadStats', e); }
+    try { renderRetraits(); } catch (e) { console.error('renderRetraits', e); }
+    try { renderTasks(); } catch (e) { console.error('renderTasks', e); }
+    try { renderUsers(); } catch (e) { console.error('renderUsers', e); }
+    try { renderAdmins(); } catch (e) { console.error('renderAdmins', e); }
+    try { renderParrainage(); } catch (e) { console.error('renderParrainage', e); }
+    try { renderSettings(); } catch (e) { console.error('renderSettings', e); }
+    try { loadAdvertisers(); } catch (e) { console.error('loadAdvertisers', e); }
+
+    setTimeout(() => { if (loader) loader.classList.add('hidden'); }, 300);
   } catch (e) {
     console.error(e);
-    document.getElementById('loader').innerHTML = '<div style="color:#fff;padding:20px;">Erreur : ' + e.message + '</div>';
+    if (loader) loader.innerHTML = '<div style="color:white;padding:20px;font-size:12px;font-family:monospace;">❌ Erreur init:<br>' + e.message + '</div>';
   }
 })();
 
+// ============================================================
+// TABS PRINCIPAL
+// ============================================================
 document.getElementById('tabs').addEventListener('click', (e) => {
   const t = e.target.closest('.tab'); if (!t) return;
   document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
   t.classList.add('active');
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
-});
-  if (t.dataset.tab === "admin2") setTimeout(function(){ loadAdmin2(); }, 100);
 
+  if (t.dataset.tab === 'admin2') setTimeout(() => loadAdmin2(), 50);
+  else if (t.dataset.tab === 'marketplace-admin') setTimeout(() => loadMarketplaceAdmin(), 50);
+});
+
+// ============================================================
+// STATS
+// ============================================================
 async function loadStats() {
   const grid = document.getElementById('statsGrid');
+  if (!grid) return;
   grid.innerHTML = '<div class="stat-box"><div class="lbl">Chargement...</div><div class="val">—</div></div>';
   const s = await apiGet('stats');
   const stats = [
@@ -323,18 +380,24 @@ async function loadStats() {
   ];
   grid.innerHTML = stats.map(x => '<div class="stat-box"><div class="lbl">' + x.l + '</div><div class="val">' + x.v + '</div></div>').join('');
   const badge = document.getElementById('retraitsBadge');
-  if (s.pendingWD > 0) { badge.textContent = s.pendingWD; badge.classList.add('show'); }
-  else badge.classList.remove('show');
+  if (badge) {
+    if (s.pendingWD > 0) { badge.textContent = s.pendingWD; badge.classList.add('show'); }
+    else badge.classList.remove('show');
+  }
 }
 
-// ==================== RETRAITS ====================
+// ============================================================
+// RETRAITS
+// ============================================================
 function renderRetraits() {
   const list = document.getElementById('retraitsList');
+  if (!list) return;
   const q = (document.getElementById('retraitsSearch')?.value || '').toLowerCase().trim();
   let f = RETRAIT_FILTER === 'all' ? DATA.retraits : DATA.retraits.filter(r => r.status === RETRAIT_FILTER);
   if (q) f = f.filter(r => { const u = r.users || {}; return (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || (r.destination||'').toLowerCase().includes(q); });
   const pending = DATA.retraits.filter(r => r.status === 'pending').length;
-  document.getElementById('retraitsPendingBadge').textContent = pending + ' en attente';
+  const badgeP = document.getElementById('retraitsPendingBadge');
+  if (badgeP) badgeP.textContent = pending + ' en attente';
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun retrait'); return; }
   list.innerHTML = f.map(r => {
     const u = r.users || {};
@@ -350,7 +413,7 @@ function renderRetraits() {
   }).join('');
 }
 
-document.getElementById('retraitsFilters').addEventListener('click', (e) => {
+document.getElementById('retraitsFilters')?.addEventListener('click', (e) => {
   const c = e.target.closest('.filter-chip'); if (!c) return;
   document.querySelectorAll('#retraitsFilters .filter-chip').forEach(x => x.classList.remove('active'));
   c.classList.add('active'); RETRAIT_FILTER = c.dataset.filter; renderRetraits();
@@ -366,9 +429,12 @@ async function wdAction(id, status) {
   renderRetraits(); loadStats();
 }
 
-// ==================== TÂCHES ====================
+// ============================================================
+// TÂCHES
+// ============================================================
 function renderTasks() {
   const list = document.getElementById('tasksList');
+  if (!list) return;
   const q = (document.getElementById('tasksSearch')?.value || '').toLowerCase().trim();
   let f = DATA.tasks;
   if (q) f = f.filter(t => (t.title||'').toLowerCase().includes(q));
@@ -443,20 +509,24 @@ async function deleteTask(id) {
   renderTasks();
 }
 
-// ==================== USERS ====================
+// ============================================================
+// USERS
+// ============================================================
 function renderUsers() {
   const list = document.getElementById('usersList');
+  if (!list) return;
   const q = (document.getElementById('usersSearch')?.value || '').toLowerCase().trim();
   let f = DATA.users;
   if (q) f = f.filter(u => (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || String(u.telegram_id).includes(q));
-  document.getElementById('usersCountBadge').textContent = DATA.users.length + ' users';
+  const badgeC = document.getElementById('usersCountBadge');
+  if (badgeC) badgeC.textContent = DATA.users.length + ' users';
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun utilisateur'); return; }
   list.innerHTML = f.slice(0, 100).map(u => '<div class="item-card">' +
     '<div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">' + escapeHtml((u.first_name || u.username || '?').charAt(0).toUpperCase()) + '</div>' +
     '<div class="ic-body">' +
     '<div class="ic-name">' + escapeHtml(u.first_name || 'Utilisateur') + ' ' + (u.is_banned ? '<span class="badge red">Banni</span>' : '') + ' ' + (u.is_admin ? '<span class="badge orange">Admin</span>' : '') + '</div>' +
     '<div class="ic-meta"><span>@' + escapeHtml(u.username || '—') + '</span><span class="dot">•</span><span>ID ' + u.telegram_id + '</span></div>' +
-    '<div class="ic-meta"><span style="color:var(--kobo-orange);font-weight:800;">💰 ' + u.balance + ' Kobo</span><span class="dot">•</span><span>retirable ' + (u.withdrawable_balance || 0) + '</span></div>' +
+    '<div class="ic-meta"><span style="color:var(--kobo-orange);font-weight:800;">💰 ' + u.balance + ' Kobo</span><span class="dot">•</span><span>retirable ' + (u.withdrawable_balance || 0) + '</span>' + (u.real_balance > 0 ? '<span class="dot">•</span><span style="color:var(--kobo-green);font-weight:800;">💵 ' + Math.round(u.real_balance) + '</span>' : '') + '</div>' +
     '</div><div class="ic-actions">' +
     '<button class="icon-btn" onclick="editUser(' + u.telegram_id + ')">✏️</button>' +
     '<button class="icon-btn" onclick="toggleBan(' + u.telegram_id + ')">' + (u.is_banned ? '🔓' : '🚫') + '</button>' +
@@ -469,6 +539,7 @@ function editUser(id) {
     '<div class="form-group"><label>Prénom</label><input id="euName" value="' + escapeHtml(u.first_name || '') + '"></div>' +
     '<div class="form-group"><label>Solde Kobo</label><input type="number" id="euBalance" value="' + u.balance + '"></div>' +
     '<div class="form-group"><label>Solde retirable</label><input type="number" id="euWithdrawable" value="' + (u.withdrawable_balance || 0) + '"></div>' +
+    '<div class="form-group"><label>Solde réel (FCFA)</label><input type="number" id="euRealBalance" value="' + (u.real_balance || 0) + '"></div>' +
     '<div class="form-check"><input type="checkbox" id="euAdmin" ' + (u.is_admin?'checked':'') + '><label>Admin</label></div>' +
     '<div class="form-check"><input type="checkbox" id="euBanned" ' + (u.is_banned?'checked':'') + '><label>Banni</label></div>' +
     '<button class="btn-primary" onclick="saveUser(' + id + ')">💾 Enregistrer</button>');
@@ -480,6 +551,7 @@ async function saveUser(id) {
     first_name: document.getElementById('euName').value.trim(),
     balance: Number(document.getElementById('euBalance').value),
     withdrawable_balance: Number(document.getElementById('euWithdrawable').value),
+    real_balance: Number(document.getElementById('euRealBalance').value),
     is_admin: document.getElementById('euAdmin').checked,
     is_banned: document.getElementById('euBanned').checked
   };
@@ -500,9 +572,12 @@ async function toggleBan(id) {
   renderUsers(); loadStats();
 }
 
-// ==================== ADMINS ====================
+// ============================================================
+// ADMINS
+// ============================================================
 function renderAdmins() {
   const list = document.getElementById('adminsList');
+  if (!list) return;
   const q = (document.getElementById('adminsSearch')?.value || '').toLowerCase().trim();
   let f = DATA.admins;
   if (q) f = f.filter(u => (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || String(u.telegram_id).includes(q));
@@ -521,9 +596,9 @@ function renderAdmins() {
 
 function openAdminModal() {
   openModal('Ajouter un administrateur',
-    '<div class="form-group"><label>ID Telegram de l\'utilisateur</label><input id="admId" placeholder="Ex: 123456789" type="number"></div>' +
+    '<div class="form-group"><label>ID Telegram</label><input id="admId" placeholder="Ex: 123456789" type="number"></div>' +
     '<div class="config-group" style="background:#f7faf8;margin-bottom:14px;">' +
-      '<div style="font-size:12px;color:var(--muted);line-height:1.5;">💡 L\'utilisateur doit d\'abord avoir démarré le bot. Trouve son ID via @userinfobot sur Telegram.</div>' +
+      '<div style="font-size:12px;color:var(--muted);line-height:1.5;">💡 L\'utilisateur doit avoir démarré le bot. Trouve son ID via @userinfobot.</div>' +
     '</div>' +
     '<button class="btn-primary" onclick="saveAdmin()">💾 Ajouter</button>');
 }
@@ -532,7 +607,7 @@ async function saveAdmin() {
   const id = Number(document.getElementById('admId').value);
   if (!id) return showToast('ID requis', true);
   const u = DATA.users.find(x => x.telegram_id === id);
-  if (!u) return showToast('Utilisateur introuvable. Doit avoir démarré le bot.', true);
+  if (!u) return showToast('Utilisateur introuvable.', true);
   await apiSend('user', 'PATCH', { telegram_id: id, is_admin: true });
   showToast('✅ Admin ajouté');
   closeModal();
@@ -558,10 +633,13 @@ async function removeAdmin(id) {
   renderUsers(); renderAdmins();
 }
 
-// ==================== PARRAINAGE ====================
+// ============================================================
+// PARRAINAGE
+// ============================================================
 function renderParrainage() {
   const list = document.getElementById('parrainList');
   const stats = document.getElementById('parrainStats');
+  if (!list || !stats) return;
   const groups = {};
   DATA.users.forEach(u => {
     if (!u.referred_by) return;
@@ -586,19 +664,22 @@ function renderParrainage() {
   }).join('');
 }
 
-// ==================== SETTINGS VISUELS ====================
+// ============================================================
+// SETTINGS VISUELS
+// ============================================================
 function renderSettings() {
   const list = document.getElementById('settingsList');
+  if (!list) return;
   const q = (document.getElementById('settingsSearch')?.value || '').toLowerCase().trim();
   let f = DATA.settings;
   if (q) f = f.filter(s => s.key.toLowerCase().includes(q) || (s.description||'').toLowerCase().includes(q));
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun paramètre'); return; }
 
-  const BOOLEAN_KEYS = ['mining_enabled','wheel_enabled','slots_enabled','leaderboard_enabled','ads_enabled','vip_enabled','marketplace_enabled','vip_priority_withdraw','task_auto_approve','bot_enabled'];
+  const BOOLEAN_KEYS = ['mining_enabled','wheel_enabled','slots_enabled','leaderboard_enabled','ads_enabled','vip_enabled','marketplace_enabled','marketplace_user_enabled','vip_priority_withdraw','task_auto_approve','bot_enabled','convert_enabled','recharge_enabled','marketplace_auto_approve','antifraud_enabled','antifraud_block_same_device','antifraud_block_same_ip','antifraud_require_channel','marketplace_allow_real_payment','marketplace_allow_kobo_payment','marketplace_require_moderation'];
   const NUM_ARR_KEYS = ['wheel_prizes','wheel_probabilities','slots_multipliers','slots_probabilities'];
-  const METHODS_KEYS = ['withdraw_methods'];
+  const METHODS_KEYS = ['withdraw_methods','recharge_methods'];
   const CHANNEL_KEYS = ['withdrawal_channel_id'];
-  const CHANNELS_ARR = ['mandatory_channels'];
+  const CHANNELS_ARR = ['mandatory_channels','marketplace_broadcast_channels'];
 
   list.innerHTML = f.map(s => {
     const key = s.key;
@@ -607,7 +688,7 @@ function renderSettings() {
     if (BOOLEAN_KEYS.includes(key)) {
       const v = s.value === true || s.value === 'true';
       return '<div class="config-row"><div class="cr-info"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
-        '<label class="toggle"><input type="checkbox" ' + (v ? 'checked' : '') + ' onchange="toggleBoolSetting(\'' + key + '\', this.checked)"><span class="toggle-slider"></span></label></div>';
+        '<label class="toggle"><input type="checkbox" ' + (v ? 'checked' : '') + ' onchange="updateSettingValue(\'' + key + '\', this.checked)"><span class="toggle-slider"></span></label></div>';
     }
 
     if (METHODS_KEYS.includes(key)) {
@@ -631,7 +712,7 @@ function renderSettings() {
         '<div class="tag-list">' + arr.map((item, i) => {
           const name = typeof item === 'object' ? (item.name || item.id) : item;
           return '<span class="tag-item">' + escapeHtml(name) + ' <button type="button" onclick="removeArrayIndex(\'' + key + '\', ' + i + ')">✕</button></span>';
-        }).join('') + '<button type="button" class="tag-add" onclick="addArrayChannel(\'' + key + '\')">➕ Ajouter un canal</button></div></div>';
+        }).join('') + '<button type="button" class="tag-add" onclick="addArrayChannel(\'' + key + '\')">➕ Ajouter</button></div></div>';
     }
 
     if (NUM_ARR_KEYS.includes(key)) {
@@ -641,7 +722,7 @@ function renderSettings() {
     }
 
     return '<div class="config-row"><div class="cr-info"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
-      '<input type="text" value=\'' + JSON.stringify(s.value).replace(/'/g, "&#39;") + '\' data-key="' + key + '" class="setting-input" onchange="updateSettingValue(\'' + key + '\', JSON.parse(this.value))"></div>';
+      '<input type="text" value=\'' + JSON.stringify(s.value).replace(/'/g, "&#39;") + '\' data-key="' + key + '" class="setting-input" onchange="updateSettingValue(\'' + key + '\', this.value)"></div>';
   }).join('');
 }
 
@@ -654,6 +735,7 @@ async function updateSettingValue(key, value) {
 }
 
 async function toggleBoolSetting(key, checked) { await updateSettingValue(key, checked); }
+async function updateSettingSelect(key, value) { await updateSettingValue(key, value); }
 
 async function toggleArrayItem(key, item, checked) {
   const setting = DATA.settings.find(s => s.key === key);
@@ -702,7 +784,9 @@ async function addArrayChannel(key) {
   renderSettings();
 }
 
-// ==================== BROADCAST ====================
+// ============================================================
+// BROADCAST
+// ============================================================
 function toggleChannelInput() {
   const target = document.getElementById('broadcastTarget').value;
   document.getElementById('channelSelectWrap').style.display = target === 'channel' ? 'block' : 'none';
@@ -739,7 +823,9 @@ async function sendBroadcast() {
   } catch (e) { status.textContent = '❌ ' + e.message; }
 }
 
-// ==================== ANNONCEURS ====================
+// ============================================================
+// ANNONCEURS
+// ============================================================
 async function loadAdvertisers() {
   try {
     const r = await fetch('/admin/api/admin/advertisers');
@@ -820,38 +906,9 @@ async function deleteAdvertiser(id) {
   showToast('Supprimé'); loadAdvertisers();
 }
 
-// ==================== UTILS ====================
-function openModal(title, html) {
-  document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalContent').innerHTML = html;
-  document.getElementById('modalOverlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); document.body.style.overflow = ''; }
-function closeModalOutside(e) { if (e.target.id === 'modalOverlay') closeModal(); }
-function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function emptyBox(msg) { return '<div class="empty">' + msg + '</div>'; }
-function timeAgo(iso) {
-  if (!iso) return '—';
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return 'À l\'instant';
-  if (diff < 3600) return 'Il y a ' + Math.floor(diff/60) + ' min';
-  if (diff < 86400) return 'Il y a ' + Math.floor(diff/3600) + ' h';
-  if (diff < 604800) return 'Il y a ' + Math.floor(diff/86400) + ' j';
-  return new Date(iso).toLocaleDateString('fr-FR');
-}
-function showToast(msg, isError) {
-  const t = document.getElementById('toast');
-  document.getElementById('toastText').textContent = msg;
-  t.className = 'toast show' + (isError ? ' error' : '');
-  setTimeout(() => t.classList.remove('show'), 3000);
-}
-
 // ============================================================
 // ADMIN 2 — SÉCURITÉ & LOGS
 // ============================================================
-let ADMIN2_TAB = 'logs';
-
 async function loadAdmin2() {
   const content = document.getElementById('admin2-content');
   if (!content) return;
@@ -877,16 +934,18 @@ document.getElementById('admin2Tabs')?.addEventListener('click', (e) => {
 
 async function renderLogs() {
   const content = document.getElementById('admin2-content');
+  if (!content) return;
   const r = await fetch('/admin/api/admin/security?resource=logs&limit=100');
   const d = await r.json();
   if (!d.ok) throw new Error(d.error || 'Erreur');
   if (!d.logs || d.logs.length === 0) { content.innerHTML = emptyBox('Aucun log'); return; }
-  const actionIcons = { device_register: '📱', game_spin: '🎡', game_slots: '🎰', ads_complete: '📺', task_complete: '✅', withdraw_paid: '💰', withdraw_rejected: '❌', limit_reached: '⚠️', mining_boost_bought: '⚡', ads_too_fast: '🚨' };
+  const actionIcons = { device_register: '📱', game_spin: '🎡', game_slots: '🎰', ads_complete: '📺', task_complete: '✅', withdraw_paid: '💰', withdraw_rejected: '❌', limit_reached: '⚠️', mining_boost_bought: '⚡', ads_too_fast: '🚨', marketplace_publish: '🛒', marketplace_approved: '✅', marketplace_purchase: '💳', recharge_requested: '💳', recharge_paid: '✅', convert_kobo_to_real: '🔄' };
   content.innerHTML = d.logs.map(l => '<div class="item-card"><div class="ic-img">' + (actionIcons[l.action] || '📌') + '</div><div class="ic-body"><div class="ic-name">' + escapeHtml(l.action) + ' <span class="badge blue">' + (l.user_id || '—') + '</span></div><div class="ic-meta"><span>👤 ' + escapeHtml(l.users?.first_name || 'Inconnu') + '</span><span class="dot">•</span><span>@' + escapeHtml(l.users?.username || '—') + '</span></div><div class="ic-desc" style="font-family:monospace;font-size:10px;">' + escapeHtml(JSON.stringify(l.details || {})) + '</div><div class="ic-meta" style="font-size:10px;"><span>' + timeAgo(l.created_at) + '</span></div></div></div>').join('');
 }
 
 async function renderAlerts() {
   const content = document.getElementById('admin2-content');
+  if (!content) return;
   const r = await fetch('/admin/api/admin/security?resource=alerts');
   const d = await r.json();
   if (!d.ok) throw new Error(d.error || 'Erreur');
@@ -910,6 +969,7 @@ async function renderAlerts() {
 
 async function renderDevices() {
   const content = document.getElementById('admin2-content');
+  if (!content) return;
   const r = await fetch('/admin/api/admin/security?resource=devices');
   const d = await r.json();
   if (!d.ok) throw new Error(d.error || 'Erreur');
@@ -919,6 +979,7 @@ async function renderDevices() {
 
 async function renderCounters() {
   const content = document.getElementById('admin2-content');
+  if (!content) return;
   const r = await fetch('/admin/api/admin/security?resource=counters');
   const d = await r.json();
   if (!d.ok) throw new Error(d.error || 'Erreur');
@@ -930,55 +991,45 @@ async function renderCounters() {
     '<div class="config-row"><div class="cr-info"><div class="cr-label">📺 Pubs vues</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.ads || 0) + '</div></div>' +
     '<div class="config-row"><div class="cr-info"><div class="cr-label">⛏️ Clics de minage</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.mining || 0) + '</div></div>' +
     '<div class="config-row"><div class="cr-info"><div class="cr-label">🎯 Taches validees</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.tasks || 0) + '</div></div>' +
-    '<div class="config-row"><div class="cr-info"><div class="cr-label">💰 Total distribue aujourd hui</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-green);">' + Math.round(t.earned || 0) + ' Kobo</div></div></div>' +
+    '<div class="config-row"><div class="cr-info"><div class="cr-label">💰 Total distribue</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-green);">' + Math.round(t.earned || 0) + ' Kobo</div></div></div>' +
     '<h3 style="font-weight:800;margin:20px 0 10px;">Top 20 utilisateurs actifs</h3>' +
     d.counters.map(c => '<div class="item-card"><div class="ic-img">👤</div><div class="ic-body"><div class="ic-name">' + escapeHtml(c.users?.first_name || 'User #' + c.user_id) + '</div><div class="ic-meta"><span>🎡 ' + (c.wheel_paid + c.wheel_free) + '</span><span class="dot">•</span><span>🎰 ' + c.slots + '</span><span class="dot">•</span><span>📺 ' + c.ads + '</span><span class="dot">•</span><span>⛏️ ' + c.mining + '</span></div><div class="ic-meta"><span style="color:var(--kobo-green);font-weight:700;">💰 ' + Math.round(c.total_earned) + ' Kobo</span></div></div></div>').join('');
 }
 
 async function renderBans() {
   const content = document.getElementById('admin2-content');
+  if (!content) return;
   const banned = DATA.users.filter(u => u.is_banned);
   if (banned.length === 0) { content.innerHTML = emptyBox('✅ Aucun utilisateur banni'); return; }
   content.innerHTML = banned.map(u => '<div class="item-card" style="border-left:4px solid #dc2626;"><div class="ic-img" style="background:rgba(220,38,38,.1);">🚫</div><div class="ic-body"><div class="ic-name">' + escapeHtml(u.first_name || 'Utilisateur') + ' <span class="badge red">Banni</span></div><div class="ic-meta"><span>@' + escapeHtml(u.username || '—') + '</span><span class="dot">•</span><span>ID ' + u.telegram_id + '</span></div><div class="ic-meta"><span>💰 ' + u.balance + ' Kobo</span></div></div><div class="ic-actions"><button class="icon-btn" onclick="unbanUser(' + u.telegram_id + ')">🔓</button></div></div>').join('');
 }
 
 async function unbanUser(id) {
-  if (!confirm('Debannir cet utilisateur ?')) return;
+  if (!confirm('Débannir cet utilisateur ?')) return;
   await apiSend('user', 'PATCH', { telegram_id: id, is_banned: false });
-  showToast('Debanni');
+  showToast('Débanni');
   const users = await apiGet('users'); DATA.users = users.data || [];
   DATA.admins = DATA.users.filter(u => u.is_admin);
   renderUsers(); renderBans();
 }
 
 // ============================================================
-
+// MARKETPLACE ADMIN
 // ============================================================
-// ADMIN MARKETPLACE — MODÉRATION
-// ============================================================
-let MP_ADS = [];
-let MP_REPORTS = [];
-let MP_STATS = {};
-let MP_FILTER = 'pending';
-
 async function loadMarketplaceAdmin() {
   const list = document.getElementById('mpList');
   if (!list) return;
   list.innerHTML = '<div class="empty">Chargement...</div>';
-
   try {
     const r = await fetch('/admin/api/admin/marketplace?status=' + MP_FILTER);
     const d = await r.json();
     if (!d.ok) { list.innerHTML = emptyBox('Erreur : ' + (d.error || '?')); return; }
-
     MP_ADS = d.ads || [];
     MP_REPORTS = d.reports || [];
     MP_STATS = d.stats || {};
-
     const pendingCount = MP_STATS.totalPending || 0;
     const badge = document.getElementById('mpPendingBadge');
     if (badge) badge.textContent = pendingCount + ' en attente';
-
     renderMpStats();
     renderMpAds();
     renderMpReports();
@@ -990,75 +1041,49 @@ async function loadMarketplaceAdmin() {
 function renderMpStats() {
   const list = document.getElementById('mpList');
   if (!list) return;
-
   const s = MP_STATS;
-  const statsHtml = '<div class="stats-grid" style="margin-bottom:16px;">' +
-    '<div class="stat-box"><div class="lbl">Annonces actives</div><div class="val">' + (s.totalActive || 0) + '</div></div>' +
+  list.innerHTML = '<div class="stats-grid" style="margin-bottom:16px;">' +
+    '<div class="stat-box"><div class="lbl">Actives</div><div class="val">' + (s.totalActive || 0) + '</div></div>' +
     '<div class="stat-box" style="border-color:var(--kobo-orange);"><div class="lbl">En attente</div><div class="val">' + (s.totalPending || 0) + '</div></div>' +
-    '<div class="stat-box" style="border-color:#3b82f6;"><div class="lbl">Ventes totales</div><div class="val">' + (s.totalOrders || 0) + '</div></div>' +
-    '<div class="stat-box" style="border-color:var(--kobo-green);"><div class="lbl">Commissions</div><div class="val">' + Math.round(s.totalCommission || 0) + ' Kobo</div></div>' +
+    '<div class="stat-box" style="border-color:#3b82f6;"><div class="lbl">Ventes</div><div class="val">' + (s.totalOrders || 0) + '</div></div>' +
+    '<div class="stat-box" style="border-color:var(--kobo-green);"><div class="lbl">Commissions</div><div class="val">' + Math.round(s.totalCommission || 0) + ' K</div></div>' +
   '</div>';
-
-  list.innerHTML = statsHtml;
 }
 
 function renderMpAds() {
   const list = document.getElementById('mpList');
   if (!list) return;
-
   const q = (document.getElementById('mpSearch')?.value || '').toLowerCase().trim();
   let f = MP_ADS;
   if (q) f = f.filter(a => (a.title || '').toLowerCase().includes(q) || (a.description || '').toLowerCase().includes(q) || (a.category || '').toLowerCase().includes(q));
-
   let html = '';
-  if (f.length === 0) {
-    html = emptyBox('Aucune annonce');
-  } else {
-    html = f.map(a => {
-      const seller = a.users?.first_name || a.users?.username || 'Vendeur';
-      const sellerId = a.users?.telegram_id || a.seller_id;
-      const statusMap = {
-        pending: { l: '⏳ En attente', c: 'orange' },
-        active: { l: '✅ Active', c: 'green' },
-        rejected: { l: '❌ Rejetée', c: 'red' },
-        paused: { l: '⏸️ En pause', c: 'gray' },
-        deleted: { l: '🗑️ Supprimée', c: 'gray' },
-      };
-      const s = statusMap[a.status] || { l: a.status, c: 'gray' };
-      const boosted = a.boosted && a.boosted_until && new Date(a.boosted_until) > new Date();
-
-      return '<div class="item-card">' +
-        '<div class="ic-img">' + (boosted ? '🚀' : '🛒') + '</div>' +
-        '<div class="ic-body">' +
-          '<div class="ic-name">' + escapeHtml(a.title) + ' <span class="badge ' + s.c + '">' + s.l + '</span>' +
-            (boosted ? ' <span class="badge gold">🚀 Boost</span>' : '') +
-            (a.broadcast_to_channels ? ' <span class="badge blue">📢 Canaux</span>' : '') +
-          '</div>' +
-          '<div class="ic-meta"><span>💰 ' + Math.round(a.price) + ' ' + (a.currency === 'real' ? 'FCFA' : 'Kobo') + '</span><span class="dot">•</span><span>' + escapeHtml(a.category) + '</span></div>' +
-          '<div class="ic-meta"><span>👤 ' + escapeHtml(seller) + '</span><span class="dot">•</span><span>ID ' + sellerId + '</span></div>' +
-          '<div class="ic-meta" style="font-size:10.5px;"><span>' + timeAgo(a.created_at) + '</span><span class="dot">•</span><span>' + a.sold + '/' + (a.places || '∞') + ' vendu</span></div>' +
-          (a.description ? '<div class="ic-desc">' + escapeHtml(a.description.slice(0, 150)) + (a.description.length > 150 ? '...' : '') + '</div>' : '') +
-          (a.admin_note ? '<div class="ic-desc" style="background:rgba(220,38,38,.1);border-radius:6px;padding:6px;margin-top:6px;color:#b91c1c;">📝 ' + escapeHtml(a.admin_note) + '</div>' : '') +
-        '</div>' +
-        '<div class="ic-actions">' +
-          (a.status === 'pending' ?
-            '<button class="icon-btn" onclick="mpApprove(' + a.id + ')" title="Approuver">✅</button>' +
-            '<button class="icon-btn" onclick="mpReject(' + a.id + ')" title="Rejeter">❌</button>' +
-            '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
-            :
-            (a.status === 'active' ?
-              (boosted ?
-                '<button class="icon-btn" onclick="mpUnboost(' + a.id + ')" title="Retirer boost">⬇️</button>'
-                :
-                '<button class="icon-btn" onclick="mpBoost(' + a.id + ')" title="Booster">🚀</button>'
-              ) : '') +
-            '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
-          ) +
-        '</div>' +
-      '</div>';
-    }).join('');
-  }
-
+  if (f.length === 0) html = emptyBox('Aucune annonce');
+  else html = f.map(a => {
+    const seller = a.users?.first_name || a.users?.username || 'Vendeur';
+    const sellerId = a.users?.telegram_id || a.seller_id;
+    const statusMap = { pending: { l: '⏳ En attente', c: 'orange' }, active: { l: '✅ Active', c: 'green' }, rejected: { l: '❌ Rejetée', c: 'red' } };
+    const s = statusMap[a.status] || { l: a.status, c: 'gray' };
+    const boosted = a.boosted && a.boosted_until && new Date(a.boosted_until) > new Date();
+    return '<div class="item-card">' +
+      '<div class="ic-img">' + (boosted ? '🚀' : '🛒') + '</div>' +
+      '<div class="ic-body">' +
+        '<div class="ic-name">' + escapeHtml(a.title) + ' <span class="badge ' + s.c + '">' + s.l + '</span>' + (boosted ? ' <span class="badge gold">🚀</span>' : '') + (a.broadcast_to_channels ? ' <span class="badge blue">📢</span>' : '') + '</div>' +
+        '<div class="ic-meta"><span>💰 ' + Math.round(a.price) + ' ' + (a.currency === 'real' ? 'FCFA' : 'Kobo') + '</span><span class="dot">•</span><span>' + escapeHtml(a.category) + '</span></div>' +
+        '<div class="ic-meta"><span>👤 ' + escapeHtml(seller) + '</span><span class="dot">•</span><span>ID ' + sellerId + '</span></div>' +
+        '<div class="ic-meta" style="font-size:10.5px;"><span>' + timeAgo(a.created_at) + '</span><span class="dot">•</span><span>' + a.sold + '/' + (a.places || '∞') + '</span></div>' +
+        (a.description ? '<div class="ic-desc">' + escapeHtml(a.description.slice(0, 150)) + (a.description.length > 150 ? '...' : '') + '</div>' : '') +
+      '</div>' +
+      '<div class="ic-actions">' +
+        (a.status === 'pending' ?
+          '<button class="icon-btn" onclick="mpApprove(' + a.id + ')">✅</button>' +
+          '<button class="icon-btn" onclick="mpReject(' + a.id + ')">❌</button>'
+          :
+          (a.status === 'active' ? (boosted ? '<button class="icon-btn" onclick="mpUnboost(' + a.id + ')">⬇️</button>' : '<button class="icon-btn" onclick="mpBoost(' + a.id + ')">🚀</button>') : '')
+        ) +
+        '<button class="icon-btn" onclick="mpDelete(' + a.id + ')">🗑️</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
   list.innerHTML += html;
 }
 
@@ -1066,66 +1091,35 @@ function renderMpReports() {
   if (!MP_REPORTS || MP_REPORTS.length === 0) return;
   const list = document.getElementById('mpList');
   if (!list) return;
-
-  const html = '<h3 style="font-weight:800;color:#b91c1c;margin:20px 0 10px;">🚨 Signalements (' + MP_REPORTS.length + ')</h3>' +
-    MP_REPORTS.map(r => '<div class="item-card" style="border-left:4px solid #dc2626;"><div class="ic-img" style="background:rgba(220,38,38,.1);">⚠️</div><div class="ic-body"><div class="ic-name">' + escapeHtml(r.marketplace_ads?.title || 'Annonce supprimée') + '</div><div class="ic-meta"><span>👤 ' + escapeHtml(r.users?.first_name || r.users?.username || 'Utilisateur') + '</span></div><div class="ic-desc">🚩 ' + escapeHtml(r.reason) + (r.details ? '<br>' + escapeHtml(r.details) : '') + '</div></div></div>').join('');
-
-  list.innerHTML += html;
+  list.innerHTML += '<h3 style="font-weight:800;color:#b91c1c;margin:20px 0 10px;">🚨 Signalements (' + MP_REPORTS.length + ')</h3>' +
+    MP_REPORTS.map(r => '<div class="item-card" style="border-left:4px solid #dc2626;"><div class="ic-img">⚠️</div><div class="ic-body"><div class="ic-name">' + escapeHtml(r.marketplace_ads?.title || 'Annonce supprimée') + '</div><div class="ic-meta"><span>👤 ' + escapeHtml(r.users?.first_name || r.users?.username || 'User') + '</span></div><div class="ic-desc">🚩 ' + escapeHtml(r.reason) + '</div></div></div>').join('');
 }
 
 async function mpApprove(adId) {
-  if (!confirm('Approuver cette annonce ?')) return;
-  const r = await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adId, action: 'approve' }),
-  });
+  if (!confirm('Approuver ?')) return;
+  const r = await fetch('/admin/api/admin/marketplace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adId, action: 'approve' }) });
   const d = await r.json();
   if (d.error) return showToast('Erreur : ' + d.error, true);
-  showToast('✅ Approuvée');
-  loadMarketplaceAdmin();
+  showToast('✅ Approuvée'); loadMarketplaceAdmin();
 }
-
 async function mpReject(adId) {
-  const reason = prompt('Motif du rejet :');
-  if (reason === null) return;
-  if (!reason.trim()) return showToast('Motif requis', true);
-  const r = await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adId, action: 'reject', reason }),
-  });
-  const d = await r.json();
-  if (d.error) return showToast('Erreur : ' + d.error, true);
-  showToast('❌ Rejetée + remboursée');
-  loadMarketplaceAdmin();
+  const reason = prompt('Motif :');
+  if (!reason) return;
+  await fetch('/admin/api/admin/marketplace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adId, action: 'reject', reason }) });
+  showToast('❌ Rejetée'); loadMarketplaceAdmin();
 }
-
 async function mpBoost(adId) {
-  if (!confirm('Booster cette annonce ?')) return;
-  await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adId, action: 'boost' }),
-  });
-  showToast('🚀 Boostée');
-  loadMarketplaceAdmin();
+  await fetch('/admin/api/admin/marketplace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adId, action: 'boost' }) });
+  showToast('🚀 Boostée'); loadMarketplaceAdmin();
 }
-
 async function mpUnboost(adId) {
-  await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adId, action: 'unboost' }),
-  });
-  showToast('Boost retiré');
-  loadMarketplaceAdmin();
+  await fetch('/admin/api/admin/marketplace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adId, action: 'unboost' }) });
+  showToast('Retiré'); loadMarketplaceAdmin();
 }
-
 async function mpDelete(adId) {
-  if (!confirm('Supprimer cette annonce ?')) return;
-  await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adId, action: 'delete' }),
-  });
-  showToast('Supprimée');
-  loadMarketplaceAdmin();
+  if (!confirm('Supprimer ?')) return;
+  await fetch('/admin/api/admin/marketplace', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adId, action: 'delete' }) });
+  showToast('Supprimée'); loadMarketplaceAdmin();
 }
 
 document.getElementById('mpFilters')?.addEventListener('click', (e) => {
@@ -1136,11 +1130,6 @@ document.getElementById('mpFilters')?.addEventListener('click', (e) => {
   loadMarketplaceAdmin();
 });
 
-document.getElementById('tabs')?.addEventListener('click', (e) => {
-  const t = e.target.closest('.tab');
-  if (t && t.dataset.tab === 'marketplace-admin') loadMarketplaceAdmin();
-});
-});
 </script>
 </body>
 </html>
