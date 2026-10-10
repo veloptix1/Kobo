@@ -6,7 +6,8 @@ export function persistentMenu() {
     .text('💰 Solde').text('🎯 Tâches').row()
     .text('👥 Parrainage').text('💸 Retrait').row()
     .text('🔄 Convertir').text('🏆 Classement').row()
-    .text('📊 Historique').text('ℹ️ Info')
+    .text('📊 Historique').text('⚙️ Paramètres').row()
+    .text('ℹ️ Info')
     .resized()
     .persistent();
 }
@@ -24,5 +25,6 @@ export function mainMenu() {
     .text('🔄 Convertir', 'menu:convert').row()
     .text('🏆 Classement', 'menu:top')
     .text('📊 Historique', 'menu:history').row()
+    .text('⚙️ Paramètres', 'menu:settings')
     .text('ℹ️ Info', 'menu:info');
 }

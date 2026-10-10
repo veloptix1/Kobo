@@ -139,6 +139,18 @@ export function registerCallbacks(bot) {
   bot.callbackQuery('menu:history', showHistory);
 
   // ===== INFO =====
+
+  // ===== Paramètres =====
+  bot.callbackQuery('menu:settings', async (ctx) => {
+    try {
+      const { settingsCommand } = await import('../commands/settings.js');
+      await ctx.answerCallbackQuery();
+      await settingsCommand(ctx);
+    } catch (e) {
+      console.error('Settings error:', e);
+      await ctx.answerCallbackQuery({ text: 'Erreur', show_alert: true });
+    }
+  });
   bot.callbackQuery('menu:info', async (ctx) => {
     await ctx.answerCallbackQuery();
     await ctx.editMessageText(
