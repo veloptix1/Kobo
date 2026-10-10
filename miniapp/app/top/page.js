@@ -10,13 +10,17 @@ export default function Top() {
     (async () => {
       const initData = window.Telegram?.WebApp?.initData;
       if (!initData) { setLoading(false); return; }
-      const r = await fetch('/api/top', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      });
-      const d = await r.json();
-      if (d.ok) setData(d);
+      try {
+        const r = await fetch('/api/top', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+        const d = await r.json();
+        if (d.ok) setData(d);
+      } catch (e) {
+        console.error(e);
+      }
       setLoading(false);
     })();
   }, []);
@@ -43,12 +47,12 @@ export default function Top() {
 
       <div className="px-5 space-y-2">
         {data.top.map((u, i) => {
-          const isMe = u.telegram_id === data.top.find(x => x.telegram_id)?.telegram_id;
+          const isMe = u.telegram_id === data.myId;
           const medal = medals[i];
           return (
             <div
               key={u.telegram_id}
-              className={`card flex items-center gap-3 ${i < 3 ? 'border-amber-500/40 bg-amber-500/5' : ''}`}
+              className={`card flex items-center gap-3 ${i < 3 ? 'border-amber-500/40 bg-amber-500/5' : ''} ${isMe ? 'ring-2 ring-amber-400' : ''}`}
             >
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                 i < 3 ? 'text-2xl' : 'bg-white/10 text-sm'
@@ -58,6 +62,7 @@ export default function Top() {
               <div className="flex-1">
                 <div className="font-semibold text-sm">
                   {u.first_name || u.username || 'Anonyme'}
+                  {isMe && <span className="text-amber-400 text-xs ml-2">← toi</span>}
                 </div>
                 <div className="text-xs text-white/50">@{u.username || '—'}</div>
               </div>
