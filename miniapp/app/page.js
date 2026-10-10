@@ -33,7 +33,7 @@ export default function Home() {
 
   if (!user) return (
     <div className="p-8 text-center">
-      <div className="text-3xl font-bold mb-4 text-kobo-dark">Kobo</div>
+      <div className="text-3xl font-bold mb-4 text-gray-900">Kobo</div>
       <p className="text-gray-500">Ouvre cette app depuis le bot Kobo sur Telegram.</p>
     </div>
   );
@@ -75,6 +75,16 @@ export default function Home() {
           <div className="font-bold text-sm text-gray-800">Miner</div>
           <div className="text-[10px] text-gray-500">Gagner des Kobo</div>
         </Link>
+
+        <Link href="/ads" className="card flex flex-col items-center py-5">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
+            <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
+            <polyline points="17 2 12 7 7 2" />
+          </svg>
+          <div className="font-bold text-sm text-gray-800">Pubs</div>
+          <div className="text-[10px] text-gray-500">+10 Kobo / pub</div>
+        </Link>
+
         <Link href="/tasks" className="card flex flex-col items-center py-5">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
             <path d="M9 11l3 3L22 4" />
@@ -83,6 +93,7 @@ export default function Home() {
           <div className="font-bold text-sm text-gray-800">Tâches</div>
           <div className="text-[10px] text-gray-500">Voir les missions</div>
         </Link>
+
         <Link href="/referral" className="card flex flex-col items-center py-5">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
             <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
@@ -92,13 +103,14 @@ export default function Home() {
           <div className="font-bold text-sm text-gray-800">Parrainer</div>
           <div className="text-[10px] text-gray-500">Inviter des amis</div>
         </Link>
-        <Link href="/games" className="card flex flex-col items-center py-5">
+
+        <Link href="/games" className="card flex flex-col items-center py-5 col-span-2">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 6v6l4 2" />
           </svg>
           <div className="font-bold text-sm text-gray-800">Jeux</div>
-          <div className="text-[10px] text-gray-500">Gagner plus</div>
+          <div className="text-[10px] text-gray-500">Roue + Machine à sous</div>
         </Link>
       </div>
 
