@@ -9,16 +9,23 @@ async function log(userId, action, details) {
 }
 
 export async function POST(req) {
-  const { initData, action } = await req.json();
+  // ===== LIRE LE BODY UNE SEULE FOIS =====
+  let body = {};
+  try {
+    body = await req.json();
+  } catch (e) {
+    return NextResponse.json({ error: 'Body JSON invalide' }, { status: 400 });
+  }
+
+  const { initData, action } = body;
   const tgUser = verifyTelegramInitData(initData, process.env.BOT_TOKEN);
   if (!tgUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const userId = tgUser.id;
 
   // ==================== LISTE DES ANNONCES ====================
   if (action === 'list') {
-    const body = await req.json().catch(() => ({}));
-    const category = req.body?.category || '';
-    const search = req.body?.search || '';
+    const category = body.category || '';
+    const search = body.search || '';
 
     let query = supabaseAdmin
       .from('marketplace_ads')
@@ -39,7 +46,6 @@ export async function POST(req) {
       ads = ads.filter(a => (a.title || '').toLowerCase().includes(s) || (a.description || '').toLowerCase().includes(s));
     }
 
-    // Enrichir avec nombre de ventes
     const { data: settings } = await supabaseAdmin.from('settings').select('key, value')
       .in('key', ['marketplace_categories', 'marketplace_min_price_real', 'marketplace_min_price_kobo', 'marketplace_publish_fee', 'marketplace_boost_fee', 'marketplace_broadcast_fee', 'marketplace_commission']);
     const s = Object.fromEntries((settings || []).map(x => [x.key, x.value]));
@@ -71,10 +77,15 @@ export async function POST(req) {
 
   // ==================== PUBLIER ====================
   if (action === 'publish') {
-    const { title, description, category, price, currency, places, link, image_url, broadcast } = req.body || {};
+    const { title, description, category, price, currency, places, link, image_url, broadcast } = body;
+
+    console.log('PUBLISH BODY:', { title: title?.length, description: description?.length, category, price, currency, places, link, image_url, broadcast });
 
     if (!title || !description || !category || !price) {
-      return NextResponse.json({ error: 'Champs manquants' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Champs manquants',
+        debug: { title: !!title, description: !!description, category: !!category, price: !!price }
+      }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin.rpc('publish_marketplace_ad', {
@@ -96,7 +107,7 @@ export async function POST(req) {
 
   // ==================== ACHETER ====================
   if (action === 'buy') {
-    const { adId, currency } = req.body || {};
+    const { adId, currency } = body;
     if (!adId) return NextResponse.json({ error: 'adId requis' }, { status: 400 });
 
     const { data, error } = await supabaseAdmin.rpc('pay_marketplace_order_v2', {
@@ -111,7 +122,7 @@ export async function POST(req) {
 
   // ==================== SUPPRIMER ====================
   if (action === 'delete') {
-    const { adId } = req.body || {};
+    const { adId } = body;
     const { data: ad } = await supabaseAdmin.from('marketplace_ads').select('seller_id').eq('id', adId).single();
     if (!ad || ad.seller_id !== userId) return NextResponse.json({ error: 'Non autorisé' }, { status: 403 });
 
@@ -122,7 +133,7 @@ export async function POST(req) {
 
   // ==================== SIGNALER ====================
   if (action === 'report') {
-    const { adId, reason, details } = req.body || {};
+    const { adId, reason, details } = body;
     await supabaseAdmin.from('marketplace_reports').insert({
       ad_id: adId, reporter_id: userId, reason, details,
     });
