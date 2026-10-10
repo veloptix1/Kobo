@@ -13,8 +13,9 @@ export function persistentMenu() {
 
 // Menu inline (dans les messages)
 export function mainMenu() {
+  const appUrl = process.env.MINIAPP_URL || 'https://kobo-miniapp.vercel.app';
   return new InlineKeyboard()
-    .webApp('🚀 Ouvrir l\\'app Kobo', process.env.MINIAPP_URL || 'https://kobo-miniapp.vercel.app')
+    .webApp('🚀 Ouvrir l app Kobo', appUrl)
     .row()
     .text('💰 Mon solde', 'menu:balance').row()
     .text('🎯 Tâches', 'menu:tasks')
