@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+  background: #061530;
+  color: #fff;
+  font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+  padding-bottom: 80px;
+  overflow-x: hidden;
+}
+
+input, textarea, select, button { font-family: inherit; }
+
+.card {
+  @apply bg-white/5 border border-white/10 rounded-2xl p-4;
+}
+
+.btn-primary {
+  @apply bg-gradient-to-r from-orange-500 to-amber-500 text-white font-bold py-3 px-5 rounded-xl text-center;
+}
+
+.btn-secondary {
+  @apply bg-white/10 text-white font-semibold py-3 px-5 rounded-xl text-center;
+}
+
+.btn-gold {
+  @apply bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold py-4 px-6 rounded-2xl text-center shadow-lg shadow-orange-500/30;
+}
+
+.bottom-nav {
+  @apply fixed bottom-0 left-0 right-0 bg-[#0A1F44] border-t border-white/10 flex justify-around items-center py-2 z-50;
+}
+
+.nav-item {
+  @apply flex flex-col items-center gap-1 text-white/50 text-[10px] font-semibold px-3 py-2;
+}
+
+.nav-item.active {
+  @apply text-amber-400;
+}
+
+.nav-item svg { width: 22px; height: 22px; }
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); }
+  50% { box-shadow: 0 0 0 15px rgba(255, 165, 0, 0); }
+}
+
+.animate-pulse-gold { animation: pulse-gold 2s infinite; }
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-slow { animation: spin-slow 20s linear infinite; }
