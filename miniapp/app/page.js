@@ -104,6 +104,16 @@ export default function Home() {
           <div className="text-[10px] text-gray-500">Inviter des amis</div>
         </Link>
 
+        <Link href="/marketplace" className="card flex flex-col items-center py-5 col-span-2 bg-gradient-to-r from-pink-50 to-rose-50 border-pink-200">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#EC4899" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 01-8 0" />
+          </svg>
+          <div className="font-bold text-sm text-pink-700">🛒 Marketplace</div>
+          <div className="text-[10px] text-pink-500">Acheter / Vendre</div>
+        </Link>
+
         <Link href="/games" className="card flex flex-col items-center py-5 col-span-2">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
             <circle cx="12" cy="12" r="10" />
