@@ -10,6 +10,7 @@ import {
 import { convertStart, handleConvertAmount } from './commands/convert.js';
 import { showLeaderboard } from './commands/leaderboard.js';
 import { showHistory } from './commands/history.js';
+import { settingsCommand, showLanguages, showCurrencies, setLanguage, setCurrency } from './commands/settings.js';
 import { registerCallbacks } from './callbacks/index.js';
 import { persistentMenu } from './utils/keyboards.js';
 import { supabase } from './supabase.js';
@@ -19,37 +20,34 @@ export const bot = new Bot(process.env.BOT_TOKEN);
 // ===== Commandes =====
 bot.command('start', startCommand);
 bot.command('tasks', tasksCommand);
-bot.command('menu', (ctx) =>
-  ctx.reply('📌 Menu principal :', { reply_markup: persistentMenu() })
-);
+bot.command('menu', (ctx) => ctx.reply('📌 Menu principal :', { reply_markup: persistentMenu() }));
 bot.command('history', showHistory);
 bot.command('top', showLeaderboard);
+bot.command('settings', settingsCommand);
+bot.command('parametres', settingsCommand);
+bot.command('langue', settingsCommand);
 
 // ===== Boutons du clavier persistant =====
-
-// 💰 Solde
 bot.hears('💰 Solde', async (ctx) => {
   const { data: user } = await supabase
     .from('users')
-    .select('balance,withdrawable_balance,total_earned,total_withdrawn')
+    .select('balance, withdrawable_balance, total_earned, total_withdrawn')
     .eq('telegram_id', ctx.from.id)
     .single();
   await ctx.reply(
-    `💰 *Ton solde*\n\n` +
-      `🪙 Kobo disponibles : *${user.balance}*\n` +
-      `💵 Solde retirable : *${user.withdrawable_balance} Kobo*\n\n` +
-      `📊 Total gagné : ${user.total_earned} Kobo\n` +
-      `📤 Total retiré : ${user.total_withdrawn} Kobo`,
+    `💰 *Ton solde Kobo*\n\n` +
+      `Solde actuel : *${user.balance} Kobo*\n` +
+      `Solde retirable : *${user.withdrawable_balance || 0} Kobo*\n` +
+      `Total gagné : ${user.total_earned} Kobo\n` +
+      `Total retiré : ${user.total_withdrawn} Kobo`,
     { parse_mode: 'Markdown' }
   );
 });
 
-// 🎯 Tâches
 bot.hears('🎯 Tâches', async (ctx) => {
   await showTasks(ctx, ctx.from.id);
 });
 
-// 👥 Parrainage
 bot.hears('👥 Parrainage', async (ctx) => {
   const { data: user } = await supabase
     .from('users')
@@ -66,26 +64,21 @@ bot.hears('👥 Parrainage', async (ctx) => {
   );
 });
 
-// 💸 Retrait
 bot.hears('💸 Retrait', withdrawStart);
-
-// 🔄 Convertir
 bot.hears('🔄 Convertir', convertStart);
-
-// 🏆 Classement
 bot.hears('🏆 Classement', showLeaderboard);
-
-// 📊 Historique
 bot.hears('📊 Historique', showHistory);
 
-// ℹ️ Info
+bot.hears('⚙️ Paramètres', settingsCommand);
+bot.hears('🌐 Langue', settingsCommand);
+
 bot.hears('ℹ️ Info', async (ctx) => {
   await ctx.reply(
     `ℹ️ *À propos de Kobo*\n\n` +
       `Kobo est un bot qui te permet de gagner des Kobo 💰 en accomplissant des tâches simples.\n\n` +
       `🎯 *Tâches* : complète des missions et gagne des Kobo\n` +
       `👥 *Parrainage* : invite des amis et gagne plus\n` +
-      `🔄 *Convertir* : convertis tes Kobo en FCFA, XOF ou USDT\n` +
+      `🔄 *Convertir* : convertis tes Kobo en FCFA, XOF, USDT\n` +
       `💸 *Retrait* : retire tes gains\n` +
       `📊 *Historique* : voir toutes tes transactions\n\n` +
       `📌 *Taux de base* : 1 Kobo = 1 FCFA\n\n` +
@@ -94,31 +87,23 @@ bot.hears('ℹ️ Info', async (ctx) => {
   );
 });
 
-// ===== Gestion des messages texte (montants, destinations) =====
+// ===== Gestion des messages texte =====
 bot.on('message:text', async (ctx, next) => {
   if (ctx.message.text.startsWith('/')) return next();
 
   const menuButtons = [
-    '💰 Solde',
-    '🎯 Tâches',
-    '👥 Parrainage',
-    '💸 Retrait',
-    '🔄 Convertir',
-    '🏆 Classement',
-    '📊 Historique',
-    'ℹ️ Info',
+    '💰 Solde', '🎯 Tâches', '👥 Parrainage', '💸 Retrait',
+    '🔄 Convertir', '🏆 Classement', '📊 Historique', 'ℹ️ Info',
+    '⚙️ Paramètres', '🌐 Langue',
   ];
   if (menuButtons.includes(ctx.message.text)) return next();
 
-  // Montant retrait
   const handledWdAmount = await handleAmountInput(ctx, ctx.message.text);
   if (handledWdAmount) return;
 
-  // Destination retrait
   const handledWdDest = await handleDestinationInput(ctx, ctx.message.text);
   if (handledWdDest) return;
 
-  // Montant conversion
   const handledCvAmount = await handleConvertAmount(ctx, ctx.message.text);
   if (handledCvAmount) return;
 
