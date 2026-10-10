@@ -951,13 +951,10 @@ async function unbanUser(id) {
 }
 
 // ============================================================
-
-// ============================================================
 // ADMIN MARKETPLACE — MODÉRATION
 // ============================================================
 let MP_ADS = [];
 let MP_REPORTS = [];
-let MP_STATS = {};
 let MP_FILTER = 'pending';
 
 async function loadMarketplaceAdmin() {
@@ -972,33 +969,16 @@ async function loadMarketplaceAdmin() {
 
     MP_ADS = d.ads || [];
     MP_REPORTS = d.reports || [];
-    MP_STATS = d.stats || {};
 
-    const pendingCount = MP_STATS.totalPending || 0;
+    const pendingCount = MP_ADS.filter(a => a.status === 'pending').length;
     const badge = document.getElementById('mpPendingBadge');
     if (badge) badge.textContent = pendingCount + ' en attente';
 
-    renderMpStats();
     renderMpAds();
     renderMpReports();
   } catch (e) {
     list.innerHTML = emptyBox('Erreur : ' + e.message);
   }
-}
-
-function renderMpStats() {
-  const list = document.getElementById('mpList');
-  if (!list) return;
-
-  const s = MP_STATS;
-  const statsHtml = '<div class="stats-grid" style="margin-bottom:16px;">' +
-    '<div class="stat-box"><div class="lbl">Annonces actives</div><div class="val">' + (s.totalActive || 0) + '</div></div>' +
-    '<div class="stat-box" style="border-color:var(--kobo-orange);"><div class="lbl">En attente</div><div class="val">' + (s.totalPending || 0) + '</div></div>' +
-    '<div class="stat-box" style="border-color:#3b82f6;"><div class="lbl">Ventes totales</div><div class="val">' + (s.totalOrders || 0) + '</div></div>' +
-    '<div class="stat-box" style="border-color:var(--kobo-green);"><div class="lbl">Commissions</div><div class="val">' + Math.round(s.totalCommission || 0) + ' Kobo</div></div>' +
-  '</div>';
-
-  list.innerHTML = statsHtml;
 }
 
 function renderMpAds() {
@@ -1009,56 +989,44 @@ function renderMpAds() {
   let f = MP_ADS;
   if (q) f = f.filter(a => (a.title || '').toLowerCase().includes(q) || (a.description || '').toLowerCase().includes(q) || (a.category || '').toLowerCase().includes(q));
 
-  let html = '';
-  if (f.length === 0) {
-    html = emptyBox('Aucune annonce');
-  } else {
-    html = f.map(a => {
-      const seller = a.users?.first_name || a.users?.username || 'Vendeur';
-      const sellerId = a.users?.telegram_id || a.seller_id;
-      const statusMap = {
-        pending: { l: '⏳ En attente', c: 'orange' },
-        active: { l: '✅ Active', c: 'green' },
-        rejected: { l: '❌ Rejetée', c: 'red' },
-        paused: { l: '⏸️ En pause', c: 'gray' },
-        deleted: { l: '🗑️ Supprimée', c: 'gray' },
-      };
-      const s = statusMap[a.status] || { l: a.status, c: 'gray' };
-      const boosted = a.boosted && a.boosted_until && new Date(a.boosted_until) > new Date();
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucune annonce'); return; }
 
-      return '<div class="item-card">' +
-        '<div class="ic-img">' + (boosted ? '🚀' : '🛒') + '</div>' +
-        '<div class="ic-body">' +
-          '<div class="ic-name">' + escapeHtml(a.title) + ' <span class="badge ' + s.c + '">' + s.l + '</span>' +
-            (boosted ? ' <span class="badge gold">🚀 Boost</span>' : '') +
-            (a.broadcast_to_channels ? ' <span class="badge blue">📢 Canaux</span>' : '') +
-          '</div>' +
-          '<div class="ic-meta"><span>💰 ' + Math.round(a.price) + ' ' + (a.currency === 'real' ? 'FCFA' : 'Kobo') + '</span><span class="dot">•</span><span>' + escapeHtml(a.category) + '</span></div>' +
-          '<div class="ic-meta"><span>👤 ' + escapeHtml(seller) + '</span><span class="dot">•</span><span>ID ' + sellerId + '</span></div>' +
-          '<div class="ic-meta" style="font-size:10.5px;"><span>' + timeAgo(a.created_at) + '</span><span class="dot">•</span><span>' + a.sold + '/' + (a.places || '∞') + ' vendu</span></div>' +
-          (a.description ? '<div class="ic-desc">' + escapeHtml(a.description.slice(0, 150)) + (a.description.length > 150 ? '...' : '') + '</div>' : '') +
-          (a.admin_note ? '<div class="ic-desc" style="background:rgba(220,38,38,.1);border-radius:6px;padding:6px;margin-top:6px;color:#b91c1c;">📝 ' + escapeHtml(a.admin_note) + '</div>' : '') +
-        '</div>' +
-        '<div class="ic-actions">' +
-          (a.status === 'pending' ?
-            '<button class="icon-btn" onclick="mpApprove(' + a.id + ')" title="Approuver">✅</button>' +
-            '<button class="icon-btn" onclick="mpReject(' + a.id + ')" title="Rejeter">❌</button>' +
-            '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
-            :
-            (a.status === 'active' ?
-              (boosted ?
-                '<button class="icon-btn" onclick="mpUnboost(' + a.id + ')" title="Retirer boost">⬇️</button>'
-                :
-                '<button class="icon-btn" onclick="mpBoost(' + a.id + ')" title="Booster">🚀</button>'
-              ) : '') +
-            '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
-          ) +
-        '</div>' +
-      '</div>';
-    }).join('');
-  }
+  list.innerHTML = f.map(a => {
+    const seller = a.users?.first_name || a.users?.username || 'Vendeur';
+    const sellerId = a.users?.telegram_id || a.seller_id;
+    const statusMap = {
+      pending: { l: '⏳ En attente', c: 'orange' },
+      active: { l: '✅ Active', c: 'green' },
+      rejected: { l: '❌ Rejetée', c: 'red' },
+      paused: { l: '⏸️ En pause', c: 'gray' },
+      deleted: { l: '🗑️ Supprimée', c: 'gray' },
+    };
+    const s = statusMap[a.status] || { l: a.status, c: 'gray' };
 
-  list.innerHTML += html;
+    return '<div class="item-card">' +
+      '<div class="ic-img">🛒</div>' +
+      '<div class="ic-body">' +
+        '<div class="ic-name">' + escapeHtml(a.title) + ' <span class="badge ' + s.c + '">' + s.l + '</span>' +
+          (a.boosted ? ' <span class="badge gold">🚀 Boost</span>' : '') +
+          (a.broadcast_to_channels ? ' <span class="badge blue">📢 Canaux</span>' : '') +
+        '</div>' +
+        '<div class="ic-meta"><span>💰 ' + Math.round(a.price) + ' ' + (a.currency === 'real' ? 'FCFA' : 'Kobo') + '</span><span class="dot">•</span><span>' + escapeHtml(a.category) + '</span></div>' +
+        '<div class="ic-meta"><span>👤 ' + escapeHtml(seller) + '</span><span class="dot">•</span><span>ID ' + sellerId + '</span></div>' +
+        '<div class="ic-meta" style="font-size:10.5px;"><span>' + timeAgo(a.created_at) + '</span><span class="dot">•</span><span>' + a.sold + '/' + (a.places || '∞') + ' vendu</span></div>' +
+        (a.description ? '<div class="ic-desc">' + escapeHtml(a.description.slice(0, 150)) + (a.description.length > 150 ? '...' : '') + '</div>' : '') +
+        (a.admin_note ? '<div class="ic-desc" style="background:rgba(220,38,38,.1);border-radius:6px;padding:6px;margin-top:6px;color:#b91c1c;">📝 ' + escapeHtml(a.admin_note) + '</div>' : '') +
+      '</div>' +
+      '<div class="ic-actions">' +
+        (a.status === 'pending' ?
+          '<button class="icon-btn" onclick="mpApprove(' + a.id + ')" title="Approuver">✅</button>' +
+          '<button class="icon-btn" onclick="mpReject(' + a.id + ')" title="Rejeter">❌</button>' +
+          '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
+          :
+          '<button class="icon-btn" onclick="mpDelete(' + a.id + ')" title="Supprimer">🗑️</button>'
+        ) +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 function renderMpReports() {
@@ -1075,7 +1043,8 @@ function renderMpReports() {
 async function mpApprove(adId) {
   if (!confirm('Approuver cette annonce ?')) return;
   const r = await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ adId, action: 'approve' }),
   });
   const d = await r.json();
@@ -1088,8 +1057,10 @@ async function mpReject(adId) {
   const reason = prompt('Motif du rejet :');
   if (reason === null) return;
   if (!reason.trim()) return showToast('Motif requis', true);
+
   const r = await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ adId, action: 'reject', reason }),
   });
   const d = await r.json();
@@ -1098,29 +1069,11 @@ async function mpReject(adId) {
   loadMarketplaceAdmin();
 }
 
-async function mpBoost(adId) {
-  if (!confirm('Booster cette annonce ?')) return;
-  await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adId, action: 'boost' }),
-  });
-  showToast('🚀 Boostée');
-  loadMarketplaceAdmin();
-}
-
-async function mpUnboost(adId) {
-  await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ adId, action: 'unboost' }),
-  });
-  showToast('Boost retiré');
-  loadMarketplaceAdmin();
-}
-
 async function mpDelete(adId) {
-  if (!confirm('Supprimer cette annonce ?')) return;
+  if (!confirm('Supprimer définitivement cette annonce ?')) return;
   await fetch('/admin/api/admin/marketplace', {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ adId, action: 'delete' }),
   });
   showToast('Supprimée');
@@ -1135,10 +1088,10 @@ document.getElementById('mpFilters')?.addEventListener('click', (e) => {
   loadMarketplaceAdmin();
 });
 
+// Charger au clic sur l'onglet
 document.getElementById('tabs')?.addEventListener('click', (e) => {
   const t = e.target.closest('.tab');
   if (t && t.dataset.tab === 'marketplace-admin') loadMarketplaceAdmin();
-});
 });
 </script>
 </body>

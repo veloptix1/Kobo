@@ -21,6 +21,7 @@ export async function GET(req) {
   let query = supabaseAdmin
     .from('marketplace_ads')
     .select('*, users(first_name, username, telegram_id)')
+    .order('boosted', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(100);
 
@@ -36,7 +37,25 @@ export async function GET(req) {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  return NextResponse.json({ ok: true, ads: data || [], reports: reports || [] });
+  // Statistiques
+  const { count: totalActive } = await supabaseAdmin.from('marketplace_ads').select('*', { count: 'exact', head: true }).eq('status', 'active');
+  const { count: totalPending } = await supabaseAdmin.from('marketplace_ads').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+  const { data: orders } = await supabaseAdmin.from('marketplace_orders').select('commission, amount');
+  const totalCommission = (orders || []).reduce((s, o) => s + Number(o.commission || 0), 0);
+  const totalVolume = (orders || []).reduce((s, o) => s + Number(o.amount || 0), 0);
+
+  return NextResponse.json({
+    ok: true,
+    ads: data || [],
+    reports: reports || [],
+    stats: {
+      totalActive: totalActive || 0,
+      totalPending: totalPending || 0,
+      totalCommission,
+      totalVolume,
+      totalOrders: (orders || []).length,
+    },
+  });
 }
 
 export async function PATCH(req) {
@@ -45,43 +64,29 @@ export async function PATCH(req) {
 
   if (!adId || !action) return NextResponse.json({ error: 'adId et action requis' }, { status: 400 });
 
-  const { data: ad } = await supabaseAdmin
-    .from('marketplace_ads')
-    .select('*')
-    .eq('id', adId)
-    .single();
-
+  const { data: ad } = await supabaseAdmin.from('marketplace_ads').select('*').eq('id', adId).single();
   if (!ad) return NextResponse.json({ error: 'Annonce introuvable' }, { status: 404 });
 
   // ===== APPROUVER =====
   if (action === 'approve') {
     await supabaseAdmin.from('marketplace_ads').update({ status: 'active' }).eq('id', adId);
 
-    // Notifier le vendeur
     await sendTelegram(ad.seller_id,
       `✅ *Ton annonce est approuvée !*\n\n📢 ${ad.title}\n💰 Prix : ${Math.round(ad.price)} ${ad.currency === 'real' ? 'FCFA' : 'Kobo'}\n\n🎉 Elle est maintenant visible par tous.`
     );
 
-    // Log
     try {
       await supabaseAdmin.from('activity_logs').insert({
-        user_id: ad.seller_id,
-        action: 'marketplace_approved',
-        details: { ad_id: adId, title: ad.title },
+        user_id: ad.seller_id, action: 'marketplace_approved', details: { ad_id: adId, title: ad.title },
       });
     } catch (e) {}
 
-    // Si broadcast demandé, publier dans les canaux
+    // Publier dans les canaux si demandé
     if (ad.broadcast_to_channels) {
-      const { data: settings } = await supabaseAdmin
-        .from('settings')
-        .select('value')
-        .eq('key', 'marketplace_broadcast_channels')
-        .single();
-
+      const { data: settings } = await supabaseAdmin.from('settings').select('value').eq('key', 'marketplace_broadcast_channels').single();
       const channels = settings?.value || [];
       const token = process.env.BOT_TOKEN;
-      const msg = `🛒 *Nouvelle annonce sur la marketplace*\n\n📢 *${ad.title}*\n\n${ad.description}\n\n💰 Prix : ${Math.round(ad.price)} ${ad.currency === 'real' ? 'FCFA' : 'Kobo'}\n\n👉 Retrouve-la dans la mini app !`;
+      const msg = `🛒 *Nouvelle annonce*\n\n📢 *${ad.title}*\n\n${ad.description}\n\n💰 Prix : ${Math.round(ad.price)} ${ad.currency === 'real' ? 'FCFA' : 'Kobo'}\n\n👉 Voir dans la mini app !`;
 
       for (const ch of channels) {
         try {
@@ -101,14 +106,14 @@ export async function PATCH(req) {
   if (action === 'reject') {
     await supabaseAdmin.from('marketplace_ads').update({ status: 'rejected', admin_note: reason || null }).eq('id', adId);
 
-    // Rembourser les frais
-    if (ad.publish_fee && ad.publish_fee > 0) {
+    // Rembourser
+    if (ad.publish_fee && Number(ad.publish_fee) > 0) {
       await supabaseAdmin.rpc('credit_user', {
         p_user_id: ad.seller_id,
-        p_amount: ad.publish_fee,
+        p_amount: Number(ad.publish_fee),
         p_type: 'admin_adjust',
         p_reference: 'marketplace_refund',
-        p_metadata: { ad_id: adId, reason: 'annonce_rejetee' },
+        p_metadata: { ad_id: adId, reason: 'rejet' },
       });
     }
 
@@ -116,34 +121,33 @@ export async function PATCH(req) {
       `❌ *Ton annonce a été refusée*\n\n📢 ${ad.title}\n\n${reason ? `📝 Motif : ${reason}\n\n` : ''}💰 Tes frais de publication t'ont été remboursés.`
     );
 
-    try {
-      await supabaseAdmin.from('activity_logs').insert({
-        user_id: ad.seller_id,
-        action: 'marketplace_rejected',
-        details: { ad_id: adId, reason },
-      });
-    } catch (e) {}
-
     return NextResponse.json({ ok: true });
   }
 
-  // ===== SUPPRIMER (admin) =====
-  if (action === 'delete') {
-    await supabaseAdmin.from('marketplace_ads').update({ status: 'deleted' }).eq('id', adId);
-    return NextResponse.json({ ok: true });
-  }
-
-  // ===== BOOSTER =====
+  // ===== BOOST =====
   if (action === 'boost') {
-    const { data: setting } = await supabaseAdmin
-      .from('settings')
-      .select('value')
-      .eq('key', 'marketplace_boost_days')
-      .single();
+    const { data: setting } = await supabaseAdmin.from('settings').select('value').eq('key', 'marketplace_boost_days').single();
     const days = Number(setting?.value) || 7;
     const until = new Date(Date.now() + days * 24 * 3600 * 1000).toISOString();
 
     await supabaseAdmin.from('marketplace_ads').update({ boosted: true, boosted_until: until }).eq('id', adId);
+
+    await sendTelegram(ad.seller_id,
+      `🚀 *Ton annonce est boostée !*\n\n📢 ${ad.title}\n\n🎯 Elle apparaîtra en priorité pendant ${days} jours.`
+    );
+
+    return NextResponse.json({ ok: true });
+  }
+
+  // ===== UNBOOST =====
+  if (action === 'unboost') {
+    await supabaseAdmin.from('marketplace_ads').update({ boosted: false, boosted_until: null }).eq('id', adId);
+    return NextResponse.json({ ok: true });
+  }
+
+  // ===== SUPPRIMER =====
+  if (action === 'delete') {
+    await supabaseAdmin.from('marketplace_ads').update({ status: 'deleted' }).eq('id', adId);
     return NextResponse.json({ ok: true });
   }
 

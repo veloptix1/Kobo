@@ -8,18 +8,26 @@ export default function AdDetail() {
   const params = useParams();
   const adId = params?.id;
   const [ad, setAd] = useState(null);
+  const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState(false);
+  const [payWith, setPayWith] = useState(null);
   const [toast, setToast] = useState(null);
-  const [myId, setMyId] = useState(null);
 
   async function load() {
     const initData = window.Telegram?.WebApp?.initData;
     if (!initData || !adId) { setLoading(false); return; }
     try {
-      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-      if (tgUser) setMyId(tgUser.id);
+      // Récupérer le user (soldes)
+      const meR = await fetch('/api/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      const meD = await meR.json();
+      if (meD.ok) setMe(meD.user);
 
+      // Récupérer l'annonce
       const r = await fetch('/api/marketplace', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,6 +37,7 @@ export default function AdDetail() {
       if (d.ok) {
         const found = (d.ads || []).find(a => String(a.id) === String(adId));
         setAd(found || null);
+        if (found) setPayWith(found.currency);
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -37,13 +46,15 @@ export default function AdDetail() {
   useEffect(() => { load(); }, [adId]);
 
   async function buy() {
-    if (!confirm(`Acheter pour ${Math.round(ad.price)} ${ad.currency === 'real' ? 'FCFA' : 'Kobo'} ?`)) return;
+    if (!payWith) return alert('Choisis un mode de paiement');
+    if (!confirm(`Payer ${Math.round(ad.price)} ${payWith === 'real' ? 'FCFA' : 'Kobo'} ?`)) return;
+
     setBuying(true);
     const initData = window.Telegram?.WebApp?.initData;
     const r = await fetch('/api/marketplace', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData, action: 'buy', adId: ad.id, currency: ad.currency }),
+      body: JSON.stringify({ initData, action: 'buy', adId: ad.id, currency: payWith }),
     });
     const d = await r.json();
     setBuying(false);
@@ -51,30 +62,19 @@ export default function AdDetail() {
     if (d.ok) {
       setToast(`✅ Achat réussi !`);
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
-      setTimeout(() => {
-        if (d.link) window.open(d.link, '_blank');
-      }, 500);
+      if (d.link) {
+        setTimeout(() => window.open(d.link, '_blank'), 800);
+      }
     } else {
       const errors = {
         insufficient_real_balance: 'Solde réel insuffisant. Recharge ton portefeuille.',
-        insufficient_kobo: 'Solde Kobo insuffisant.',
+        insufficient_kobo: 'Solde Kobo insuffisant. Gagne plus ou convertis.',
         no_places_left: 'Plus de places disponibles.',
         cannot_buy_own_ad: 'Tu ne peux pas acheter ta propre annonce.',
         ad_not_found: 'Annonce introuvable.',
       };
       alert(errors[d.error] || d.error);
     }
-  }
-
-  async function remove() {
-    if (!confirm('Supprimer cette annonce ?')) return;
-    const initData = window.Telegram?.WebApp?.initData;
-    await fetch('/api/marketplace', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData, action: 'delete', adId: ad.id }),
-    });
-    window.location.href = '/marketplace';
   }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-500">Chargement...</div>;
@@ -87,7 +87,7 @@ export default function AdDetail() {
 
   const sellerName = ad.users?.first_name || ad.users?.username || 'Vendeur';
   const placesLeft = ad.places ? ad.places - ad.sold : '∞';
-  const isMine = myId && String(ad.seller_id) === String(myId);
+  const isMine = me && String(ad.seller_id) === String(me.telegram_id);
 
   return (
     <div className="min-h-screen pb-24">
@@ -99,9 +99,7 @@ export default function AdDetail() {
       </header>
 
       <div className="p-5">
-        {ad.image_url && (
-          <img src={ad.image_url} alt="" className="w-full h-48 object-cover rounded-2xl mb-4" />
-        )}
+        {ad.image_url && <img src={ad.image_url} alt="" className="w-full h-48 object-cover rounded-2xl mb-4" />}
 
         <div className="card mb-4">
           <h2 className="text-lg font-bold text-gray-800 mb-3">{ad.title}</h2>
@@ -140,30 +138,45 @@ export default function AdDetail() {
         </div>
 
         {isMine ? (
-          <>
-            <div className="rounded-xl p-3 mb-4 bg-blue-50 border border-blue-200 text-xs text-blue-800">
-              ℹ️ C'est ton annonce. Tu peux la supprimer ou la modifier depuis "Mes annonces".
-            </div>
-            <button onClick={remove} className="w-full py-4 rounded-2xl font-bold bg-red-500 text-white">
-              🗑️ Supprimer mon annonce
-            </button>
-          </>
+          <div className="rounded-xl p-4 bg-blue-50 border border-blue-200 text-sm text-blue-800">
+            ℹ️ C'est ton annonce.
+          </div>
+        ) : ad.status !== 'active' ? (
+          <div className="text-center text-gray-500 text-sm py-4">Cette annonce n'est pas disponible.</div>
         ) : (
           <>
-            {ad.status === 'active' && (
-              <button
-                onClick={buy}
-                disabled={buying}
-                className={`w-full py-4 rounded-2xl font-bold text-lg ${!buying ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg' : 'bg-gray-200 text-gray-400'}`}
-              >
-                {buying ? 'Achat...' : `💳 Acheter maintenant`}
-              </button>
-            )}
-            {ad.status !== 'active' && (
-              <div className="text-center text-gray-500 text-sm py-4">
-                Cette annonce n'est pas disponible à l'achat.
+            {/* CHOIX DE LA DEVISE */}
+            <div className="card mb-4">
+              <div className="text-sm font-bold text-gray-800 mb-3">💳 Mode de paiement</div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setPayWith('real')}
+                  className={`py-3 rounded-xl text-sm font-bold ${payWith === 'real' ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  💵 Argent réel
+                  <div className="text-[10px] mt-1 opacity-80">
+                    {me ? Math.round(me.real_balance || 0) : 0} FCFA dispo
+                  </div>
+                </button>
+                <button
+                  onClick={() => setPayWith('kobo')}
+                  className={`py-3 rounded-xl text-sm font-bold ${payWith === 'kobo' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+                >
+                  🪙 Kobo
+                  <div className="text-[10px] mt-1 opacity-80">
+                    {me ? Math.round(me.balance || 0) : 0} Kobo dispo
+                  </div>
+                </button>
               </div>
-            )}
+            </div>
+
+            <button
+              onClick={buy}
+              disabled={buying || !payWith}
+              className={`w-full py-4 rounded-2xl font-bold text-lg ${!buying && payWith ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg' : 'bg-gray-200 text-gray-400'}`}
+            >
+              {buying ? 'Achat...' : `💳 Payer ${Math.round(ad.price)} ${payWith === 'real' ? 'FCFA' : 'Kobo'}`}
+            </button>
           </>
         )}
       </div>
