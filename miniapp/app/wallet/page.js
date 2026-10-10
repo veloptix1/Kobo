@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Nav from '@/components/Nav';
 
 export default function Wallet() {
@@ -7,22 +8,36 @@ export default function Wallet() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('tx');
 
-  useEffect(() => {
-    (async () => {
-      const initData = window.Telegram?.WebApp?.initData;
-      if (!initData) { setLoading(false); return; }
-      try {
-        const r = await fetch('/api/wallet', {
+  async function load() {
+    const initData = window.Telegram?.WebApp?.initData;
+    if (!initData) { setLoading(false); return; }
+    try {
+      const [w, r] = await Promise.all([
+        fetch('/api/wallet', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ initData }),
+        }).then(x => x.json()),
+        fetch('/api/recharge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData, action: 'status' }),
+        }).then(x => x.json()),
+      ]);
+      if (w.ok) {
+        setData({
+          user: w.user,
+          transactions: w.transactions || [],
+          withdrawals: w.withdrawals || [],
+          real_balance: r.real_balance || 0,
+          currency: r.currency || 'FCFA',
         });
-        const d = await r.json();
-        if (d.ok) setData(d);
-      } catch (e) { console.error(e); }
-      setLoading(false);
-    })();
-  }, []);
+      }
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-gray-500">Chargement...</div>;
   if (!data) return <div className="p-8 text-center text-gray-500">Ouvre depuis le bot.</div>;
@@ -30,6 +45,7 @@ export default function Wallet() {
   const typeLabels = {
     signup: '🎁 Bonus inscription', task: '🎯 Tâche', referral: '👥 Parrainage',
     withdrawal: '💸 Retrait', admin_adjust: '⚙️ Ajustement', convert: '🔄 Conversion',
+    marketplace: '🛒 Achat marketplace',
   };
   const statusLabels = {
     pending: '⏳ En attente', paid: '✅ Payé', rejected: '❌ Refusé', processing: '⚙️ En cours',
@@ -38,21 +54,40 @@ export default function Wallet() {
   return (
     <div className="min-h-screen pb-24">
       <header className="p-5 bg-white border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-900">💰 Wallet</h1>
+        <h1 className="text-2xl font-bold text-gray-900">💰 Portefeuille</h1>
       </header>
 
-      <div className="px-5 pt-5 mb-6">
-        <div className="rounded-3xl p-6 text-center bg-gradient-to-br from-amber-100 to-orange-100 border border-amber-200">
-          <div className="text-gray-500 text-xs mb-1">Solde principal</div>
-          <div className="text-4xl font-black text-orange-600 mb-1">{Math.round(data.user.balance || 0)}</div>
-          <div className="text-gray-500 text-xs mb-4">Kobo ≈ {(data.user.balance || 0).toFixed(0)} FCFA</div>
-          <div className="pt-4 border-t border-amber-200">
-            <div className="text-gray-500 text-xs mb-1">Solde retirable</div>
-            <div className="text-2xl font-bold text-emerald-600">{Math.round(data.user.withdrawable_balance || 0)} Kobo</div>
+      {/* Solde réel (priorité) */}
+      <div className="px-5 pt-5 mb-3">
+        <div className="rounded-3xl p-6 bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200">
+          <div className="text-emerald-700 text-xs font-semibold mb-1">💵 Solde réel</div>
+          <div className="text-4xl font-black text-emerald-700 mb-1">
+            {Math.round(data.real_balance).toLocaleString('fr-FR')}
+          </div>
+          <div className="text-emerald-600 text-sm font-semibold mb-4">{data.currency}</div>
+          <Link href="/recharge" className="block w-full py-3 rounded-xl text-center font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 shadow-lg">
+            ➕ Recharger
+          </Link>
+        </div>
+      </div>
+
+      {/* Solde Kobo */}
+      <div className="px-5 mb-6">
+        <div className="rounded-2xl p-4 bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-amber-700 text-xs font-semibold">🪙 Solde Kobo</div>
+              <div className="text-2xl font-black text-orange-600">{Math.round(data.user.balance || 0)}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-gray-500">≈ {Math.round(data.user.balance || 0)} FCFA</div>
+              <Link href="/wallet/convert" className="text-xs text-orange-600 font-bold underline">Convertir</Link>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* Stats */}
       <div className="px-5 mb-6 grid grid-cols-2 gap-3">
         <div className="card text-center">
           <div className="text-xs text-gray-500 mb-1">Total gagné</div>
@@ -64,11 +99,13 @@ export default function Wallet() {
         </div>
       </div>
 
+      {/* Onglets */}
       <div className="px-5 mb-4 flex gap-2">
         <button onClick={() => setTab('tx')} className={`flex-1 py-2 rounded-xl text-sm font-semibold ${tab === 'tx' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>Transactions</button>
         <button onClick={() => setTab('wd')} className={`flex-1 py-2 rounded-xl text-sm font-semibold ${tab === 'wd' ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white' : 'bg-gray-100 text-gray-600'}`}>Retraits</button>
       </div>
 
+      {/* Liste */}
       <div className="px-5 space-y-2">
         {tab === 'tx' ? (
           data.transactions.length === 0 ? (
