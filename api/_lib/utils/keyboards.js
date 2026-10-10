@@ -1,5 +1,6 @@
 import { InlineKeyboard, Keyboard } from 'grammy';
 
+// Clavier persistant en bas
 export function persistentMenu() {
   return new Keyboard()
     .text('💰 Solde').text('🎯 Tâches').row()
@@ -10,8 +11,11 @@ export function persistentMenu() {
     .persistent();
 }
 
+// Menu inline (dans les messages)
 export function mainMenu() {
   return new InlineKeyboard()
+    .webApp('🚀 Ouvrir l\\'app Kobo', process.env.MINIAPP_URL || 'https://kobo-miniapp.vercel.app')
+    .row()
     .text('💰 Mon solde', 'menu:balance').row()
     .text('🎯 Tâches', 'menu:tasks')
     .text('👥 Parrainage', 'menu:referral').row()
