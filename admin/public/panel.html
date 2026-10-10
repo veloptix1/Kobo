@@ -307,6 +307,7 @@ document.getElementById('tabs').addEventListener('click', (e) => {
   t.classList.add('active');
   document.getElementById('panel-' + t.dataset.tab).classList.add('active');
 });
+  if (t.dataset.tab === "admin2") setTimeout(function(){ loadAdmin2(); }, 100);
 
 async function loadStats() {
   const grid = document.getElementById('statsGrid');
