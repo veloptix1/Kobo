@@ -11,10 +11,11 @@
   input, textarea, select { -webkit-user-select: text; user-select: text; }
   .loader { position: fixed; inset: 0; z-index: 9999; background: var(--kobo-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; transition: opacity .5s, visibility .5s; }
   .loader.hidden { opacity: 0; visibility: hidden; }
-  .loader-logo { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 1px; }
+  .loader-logo { font-size: 22px; font-weight: 700; color: #fff; }
   .loader-logo span { color: var(--kobo-gold); }
   .spinner { width: 46px; height: 46px; border: 4px solid rgba(255,255,255,.2); border-top-color: var(--kobo-gold); border-radius: 50%; animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
   .header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark)); color: #fff; }
   .header-logo-wrap { display: flex; align-items: center; gap: 10px; }
   .logo { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; }
@@ -46,15 +47,16 @@
   .item-card .ic-meta { font-size: 11.5px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
   .item-card .ic-meta .dot { color: #d1d5db; }
   .item-card .ic-desc { font-size: 12px; color: #4b5563; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #f3f4f6; }
-  .item-card .ic-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .item-card .ic-actions { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
   .icon-btn { width: 32px; height: 32px; border-radius: 9px; background: #f7faf8; border: none; cursor: pointer; font-size: 14px; }
-  .badge { font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; }
+  .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: .3px; }
   .badge.green { background: rgba(16,185,129,.15); color: #166534; }
   .badge.orange { background: rgba(255,107,0,.15); color: var(--kobo-orange); }
   .badge.red { background: rgba(239,68,68,.15); color: var(--kobo-danger); }
   .badge.blue { background: rgba(59,130,246,.15); color: #2563eb; }
   .badge.gray { background: rgba(107,114,128,.15); color: #4b5563; }
-  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; }
+  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; -ms-overflow-style: none; scrollbar-width: none; }
+  .filter-row::-webkit-scrollbar { display: none; }
   .filter-chip { padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #fff; border: 1.5px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; white-space: nowrap; }
   .filter-chip.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border-color: transparent; }
   .search-full { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid var(--border); font-family: inherit; font-size: 13px; outline: none; margin-bottom: 12px; }
@@ -112,6 +114,7 @@
   <button class="tab" data-tab="parrainage">🤝 Parrainage</button>
   <button class="tab" data-tab="settings">⚙️ Réglages</button>
   <button class="tab" data-tab="broadcast">📢 Annonce</button>
+  <button class="tab" data-tab="advertisers">🏢 Annonceurs</button>
 </nav>
 
 <main class="content">
@@ -176,6 +179,11 @@
       <div style="margin-top:12px;font-size:12px;color:#6b7280;" id="broadcastStatus"></div>
     </div>
   </div>
+  <div class="panel" id="panel-advertisers">
+    <div class="admin-toolbar"><h2>🏢 Annonceurs</h2><button class="btn-add" onclick="openAdvertiserModal()">➕ Nouveau</button></div>
+    <input type="text" class="search-full" id="advSearch" placeholder="🔍 Rechercher..." oninput="renderAdvertisers()">
+    <div id="advertisersList"></div>
+  </div>
 </main>
 
 <div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
@@ -208,6 +216,7 @@ async function apiSend(resource, method, body) {
 
 let DATA = { retraits: [], tasks: [], users: [], settings: [] };
 let RETRAIT_FILTER = 'pending';
+let ADV_DATA = [];
 
 (async function init() {
   try {
@@ -227,6 +236,7 @@ let RETRAIT_FILTER = 'pending';
     renderUsers();
     renderParrainage();
     renderSettings();
+    loadAdvertisers();
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 200);
   } catch (e) {
     console.error(e);
@@ -265,10 +275,8 @@ function renderRetraits() {
   const q = (document.getElementById('retraitsSearch')?.value || '').toLowerCase().trim();
   let f = RETRAIT_FILTER === 'all' ? DATA.retraits : DATA.retraits.filter(r => r.status === RETRAIT_FILTER);
   if (q) f = f.filter(r => { const u = r.users || {}; return (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || (r.destination||'').toLowerCase().includes(q); });
-
   const pending = DATA.retraits.filter(r => r.status === 'pending').length;
   document.getElementById('retraitsPendingBadge').textContent = pending + ' en attente';
-
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun retrait'); return; }
   list.innerHTML = f.map(r => {
     const u = r.users || {};
@@ -282,8 +290,8 @@ function renderRetraits() {
         <div class="ic-meta" style="font-size:10.5px;"><span>${timeAgo(r.created_at)} · ID #${r.id}</span></div>
       </div>
       <div class="ic-actions">${r.status === 'pending' ? `
-        <button class="icon-btn" onclick="wdAction(${r.id}, 'paid')" title="Payé">✅</button>
-        <button class="icon-btn" onclick="wdAction(${r.id}, 'rejected')" title="Rejeter">❌</button>
+        <button class="icon-btn" onclick="wdAction(${r.id}, 'paid')">✅</button>
+        <button class="icon-btn" onclick="wdAction(${r.id}, 'rejected')">❌</button>
       ` : ''}</div>
     </div>`;
   }).join('');
@@ -316,7 +324,7 @@ function renderTasks() {
     <div class="ic-img">${t.is_active ? '🎯' : '🚫'}</div>
     <div class="ic-body">
       <div class="ic-name">${escapeHtml(t.title)} ${t.is_active ? '' : '<span class="badge red">Inactif</span>'}</div>
-      <div class="ic-meta"><span class="badge blue">${t.type}</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">💰 ${t.reward} Kobo</span></div>
+      <div class="ic-meta"><span class="badge blue">${t.type}</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">💰 ${t.reward} Kobo</span>${t.advertiser_id ? '<span class="dot">•</span><span style="color:#9333EA;font-weight:700;">🏢 Annonceur</span>' : ''}</div>
       ${t.description ? `<div class="ic-desc">${escapeHtml(t.description)}</div>` : ''}
     </div>
     <div class="ic-actions">
@@ -329,13 +337,18 @@ function renderTasks() {
 
 function openTaskModal(id) {
   const t = id ? DATA.tasks.find(x => x.id === id) : { title:'', description:'', type:'one_time', reward:0, link:'', channel_id:'', daily_limit:1, is_active:true };
+  const advOptions = (ADV_DATA || []).map(a => `<option value="${a.id}" ${t.advertiser_id === a.id ? 'selected' : ''}>${escapeHtml(a.name)} (${Math.round(a.balance)} Kobo)</option>`).join('');
   openModal(id ? 'Modifier' : 'Nouvelle tâche', `
     <div class="form-group"><label>Titre</label><input id="tTitle" value="${escapeHtml(t.title)}"></div>
     <div class="form-group"><label>Description</label><textarea id="tDesc">${escapeHtml(t.description||'')}</textarea></div>
     <div class="form-row">
       <div class="form-group"><label>Type</label><select id="tType">${['one_time','daily','channel_join','watch_ad','share_link','signup','custom'].map(v => `<option ${t.type===v?'selected':''}>${v}</option>`).join('')}</select></div>
-      <div class="form-group"><label>Récompense Kobo</label><input type="number" id="tReward" value="${t.reward}"></div>
+      <div class="form-group"><label>Récompense (Kobo)</label><input type="number" id="tReward" value="${t.reward}"></div>
     </div>
+    <div class="form-group"><label>Annonceur (optionnel)</label>
+      <select id="tAdvertiser"><option value="">— Aucun —</option>${advOptions}</select>
+    </div>
+    <div class="form-group"><label>Coût annonceur / complétion (Kobo)</label><input type="number" id="tCost" value="${t.cost_per_completion || 0}"></div>
     <div class="form-group"><label>Lien</label><input id="tLink" value="${escapeHtml(t.link||'')}"></div>
     <div class="form-row">
       <div class="form-group"><label>ID Canal</label><input id="tChannel" value="${escapeHtml(t.channel_id||'')}"></div>
@@ -347,15 +360,18 @@ function openTaskModal(id) {
 }
 
 async function saveTask(id) {
+  const advSelect = document.getElementById('tAdvertiser');
   const payload = {
     title: document.getElementById('tTitle').value.trim(),
     description: document.getElementById('tDesc').value.trim() || null,
     type: document.getElementById('tType').value,
     reward: Number(document.getElementById('tReward').value),
+    advertiser_id: advSelect && advSelect.value ? Number(advSelect.value) : null,
+    cost_per_completion: Number(document.getElementById('tCost').value) || 0,
     link: document.getElementById('tLink').value.trim() || null,
     channel_id: document.getElementById('tChannel').value.trim() || null,
     daily_limit: Number(document.getElementById('tDaily').value),
-    is_active: document.getElementById('tActive').checked
+    is_active: document.getElementById('tActive').checked,
   };
   if (!payload.title) return showToast('Titre requis', true);
   const r = id ? await apiSend('task', 'PATCH', { id, ...payload }) : await apiSend('task', 'POST', payload);
@@ -544,6 +560,134 @@ async function sendBroadcast() {
       status.textContent = '❌ ' + (data.error || 'Erreur');
     }
   } catch (e) { status.textContent = '❌ ' + e.message; }
+}
+
+async function loadAdvertisers() {
+  const r = await fetch('/admin/api/admin/advertisers');
+  const d = await r.json();
+  ADV_DATA = d.advertisers || [];
+  renderAdvertisers();
+}
+
+function renderAdvertisers() {
+  const list = document.getElementById('advertisersList');
+  if (!list) return;
+  const q = (document.getElementById('advSearch')?.value || '').toLowerCase().trim();
+  let f = ADV_DATA;
+  if (q) f = f.filter(a => (a.name || '').toLowerCase().includes(q) || (a.contact || '').toLowerCase().includes(q));
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucun annonceur'); return; }
+  list.innerHTML = f.map(a => `
+    <div class="item-card">
+      <div class="ic-img">🏢</div>
+      <div class="ic-body">
+        <div class="ic-name">${escapeHtml(a.name)} ${a.is_active ? '' : '<span class="badge red">Inactif</span>'}</div>
+        <div class="ic-meta">
+          <span>💰 ${Math.round(a.balance || 0)} Kobo</span>
+          <span class="dot">•</span>
+          <span>Dépensé : ${Math.round(a.total_spent || 0)}</span>
+        </div>
+        ${a.contact ? `<div class="ic-meta" style="font-size:10.5px;">📞 ${escapeHtml(a.contact)}</div>` : ''}
+      </div>
+      <div class="ic-actions">
+        <button class="icon-btn" onclick="creditAdvertiser(${a.id})">💵</button>
+        <button class="icon-btn" onclick="toggleAdvertiser(${a.id}, ${a.is_active})">${a.is_active ? '⏸️' : '▶️'}</button>
+        <button class="icon-btn" onclick="editAdvertiser(${a.id})">✏️</button>
+        <button class="icon-btn" onclick="deleteAdvertiser(${a.id})">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openAdvertiserModal() {
+  openModal('Nouvel annonceur', `
+    <div class="form-group"><label>Nom</label><input id="advName" placeholder="Ex: Jumia"></div>
+    <div class="form-group"><label>Contact</label><input id="advContact" placeholder="@marque ou +237..."></div>
+    <div class="form-group"><label>Solde initial (Kobo)</label><input type="number" id="advBalance" value="0"></div>
+    <div class="form-check"><input type="checkbox" id="advActive" checked><label>Actif</label></div>
+    <button class="btn-primary" onclick="saveAdvertiser()">💾 Créer</button>
+  `);
+}
+
+async function saveAdvertiser() {
+  const payload = {
+    name: document.getElementById('advName').value.trim(),
+    contact: document.getElementById('advContact').value.trim() || null,
+    balance: Number(document.getElementById('advBalance').value) || 0,
+    is_active: document.getElementById('advActive').checked,
+  };
+  if (!payload.name) return showToast('Nom requis', true);
+  const r = await fetch('/admin/api/admin/advertisers', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const d = await r.json();
+  if (d.error) return showToast('Erreur : ' + d.error, true);
+  showToast('✅ Créé');
+  closeModal();
+  loadAdvertisers();
+}
+
+function editAdvertiser(id) {
+  const a = ADV_DATA.find(x => x.id === id);
+  if (!a) return;
+  openModal('Modifier ' + a.name, `
+    <div class="form-group"><label>Nom</label><input id="advName" value="${escapeHtml(a.name)}"></div>
+    <div class="form-group"><label>Contact</label><input id="advContact" value="${escapeHtml(a.contact || '')}"></div>
+    <div class="form-group"><label>Solde (Kobo)</label><input type="number" id="advBalance" value="${a.balance}"></div>
+    <div class="form-check"><input type="checkbox" id="advActive" ${a.is_active ? 'checked' : ''}><label>Actif</label></div>
+    <button class="btn-primary" onclick="updateAdvertiser(${id})">💾 Enregistrer</button>
+  `);
+}
+
+async function updateAdvertiser(id) {
+  const payload = {
+    id,
+    name: document.getElementById('advName').value.trim(),
+    contact: document.getElementById('advContact').value.trim() || null,
+    balance: Number(document.getElementById('advBalance').value),
+    is_active: document.getElementById('advActive').checked,
+  };
+  const r = await fetch('/admin/api/admin/advertisers', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const d = await r.json();
+  if (d.error) return showToast('Erreur : ' + d.error, true);
+  showToast('✅ Mis à jour');
+  closeModal();
+  loadAdvertisers();
+}
+
+async function creditAdvertiser(id) {
+  const v = prompt('Montant à créditer (Kobo) :');
+  if (!v) return;
+  const a = ADV_DATA.find(x => x.id === id);
+  const newBal = Number(a.balance) + Number(v);
+  await fetch('/admin/api/admin/advertisers', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, balance: newBal }),
+  });
+  showToast(`✅ +${v} Kobo`);
+  loadAdvertisers();
+}
+
+async function toggleAdvertiser(id, active) {
+  await fetch('/admin/api/admin/advertisers', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, is_active: !active }),
+  });
+  loadAdvertisers();
+}
+
+async function deleteAdvertiser(id) {
+  if (!confirm('Supprimer cet annonceur ?')) return;
+  await fetch(`/admin/api/admin/advertisers?id=${id}`, { method: 'DELETE' });
+  showToast('Supprimé');
+  loadAdvertisers();
 }
 
 function openModal(title, html) {
