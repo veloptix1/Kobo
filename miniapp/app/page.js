@@ -114,6 +114,24 @@ export default function Home() {
         </Link>
       </div>
 
+      <div className="px-5 mb-4">
+        <Link href="/vip" className="card flex items-center justify-between bg-gradient-to-r from-purple-100 to-pink-100 border-purple-300">
+          <div className="flex items-center gap-3">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9333EA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 3h12l4 6-10 12L2 9z" />
+              <path d="M2 9h20" />
+            </svg>
+            <div>
+              <div className="font-bold text-purple-700">Devenir VIP 💎</div>
+              <div className="text-xs text-purple-600">+30% de gains</div>
+            </div>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9333EA" strokeWidth="2" strokeLinecap="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+      </div>
+
       <div className="px-5">
         <Link href="/top" className="card flex items-center justify-between">
           <div className="flex items-center gap-3">
