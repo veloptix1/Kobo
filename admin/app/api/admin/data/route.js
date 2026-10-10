@@ -111,6 +111,7 @@ export async function PATCH(req) {
   const body = await req.json();
 
   try {
+    // ==================== RETRAIT ====================
     if (resource === 'withdrawal') {
       const { id, status } = body;
       if (!id || !status) return NextResponse.json({ error: 'id and status required' }, { status: 400 });
@@ -123,6 +124,21 @@ export async function PATCH(req) {
 
       if (fetchErr || !w) return NextResponse.json({ error: 'Withdrawal not found' }, { status: 404 });
 
+      // Vérifier le délai si on passe à 'paid'
+      if (status === 'paid') {
+        const { data: setting } = await supabaseAdmin
+          .from('settings')
+          .select('value')
+          .eq('key', 'withdraw_delay_hours')
+          .single();
+        const delayHours = Number(setting?.value) || 24;
+        const hoursSinceRequest = (Date.now() - new Date(w.created_at).getTime()) / 3600000;
+        if (delayHours > 0 && hoursSinceRequest < delayHours) {
+          const remaining = Math.ceil(delayHours - hoursSinceRequest);
+          return NextResponse.json({ error: `Attendre encore ${remaining}h (délai sécurité)` }, { status: 400 });
+        }
+      }
+
       const { error: updateErr } = await supabaseAdmin
         .from('withdrawals')
         .update({ status, processed_at: new Date().toISOString() })
@@ -130,17 +146,20 @@ export async function PATCH(req) {
 
       if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 });
 
-      const channelId = '@koboretrai';
-
-      // 🔔 1. Éditer le message dans le canal retrait
-      if (w.channel_message_id) {
-        const now = new Date().toLocaleString('fr-FR', {
-          day: '2-digit',
-          month: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
+      // Log activité
+      try {
+        await supabaseAdmin.from('activity_logs').insert({
+          user_id: w.user_id,
+          action: 'withdraw_' + status,
+          details: { withdrawal_id: id, amount: w.amount_target, currency: w.target_currency, method: w.method },
         });
+      } catch (e) {
+        console.error('Log failed:', e.message);
+      }
 
+      // Éditer le message canal
+      if (w.channel_message_id) {
+        const now = new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         let channelText = '';
         if (status === 'paid') {
           channelText =
@@ -159,13 +178,12 @@ export async function PATCH(req) {
             `📅 Traité le ${now}\n\n` +
             `🔙 Le montant a été remboursé.`;
         }
-
         if (channelText) {
-          await editTelegram(channelId, w.channel_message_id, channelText);
+          await editTelegram('@koboretrai', w.channel_message_id, channelText);
         }
       }
 
-      // 🔔 2. Notifier l'utilisateur
+      // Notifier l'utilisateur
       if (status === 'paid') {
         const message =
           `✅ *Retrait payé !*\n\n` +
@@ -194,6 +212,7 @@ export async function PATCH(req) {
       return NextResponse.json({ ok: true });
     }
 
+    // ==================== TÂCHE ====================
     if (resource === 'task') {
       const { id, ...updates } = body;
       const { error } = await supabaseAdmin.from('tasks').update(updates).eq('id', id);
@@ -201,6 +220,7 @@ export async function PATCH(req) {
       return NextResponse.json({ ok: true });
     }
 
+    // ==================== USER ====================
     if (resource === 'user') {
       const { telegram_id, ...updates } = body;
       const { error } = await supabaseAdmin.from('users').update(updates).eq('telegram_id', telegram_id);
@@ -208,6 +228,7 @@ export async function PATCH(req) {
       return NextResponse.json({ ok: true });
     }
 
+    // ==================== SETTING ====================
     if (resource === 'setting') {
       const { key, value } = body;
       const { error } = await supabaseAdmin
