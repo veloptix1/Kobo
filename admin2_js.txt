@@ -1,0 +1,104 @@
+
+// ============================================================
+// ADMIN 2 — SÉCURITÉ & LOGS
+// ============================================================
+let ADMIN2_TAB = 'logs';
+
+async function loadAdmin2() {
+  const content = document.getElementById('admin2-content');
+  if (!content) return;
+  content.innerHTML = '<div class="empty">Chargement...</div>';
+  try {
+    if (ADMIN2_TAB === 'logs') await renderLogs();
+    else if (ADMIN2_TAB === 'alerts') await renderAlerts();
+    else if (ADMIN2_TAB === 'devices') await renderDevices();
+    else if (ADMIN2_TAB === 'counters') await renderCounters();
+    else if (ADMIN2_TAB === 'bans') await renderBans();
+  } catch (e) {
+    content.innerHTML = emptyBox('Erreur : ' + e.message);
+  }
+}
+
+document.getElementById('admin2Tabs')?.addEventListener('click', (e) => {
+  const c = e.target.closest('.filter-chip'); if (!c) return;
+  document.querySelectorAll('#admin2Tabs .filter-chip').forEach(x => x.classList.remove('active'));
+  c.classList.add('active');
+  ADMIN2_TAB = c.dataset.sub;
+  loadAdmin2();
+});
+
+async function renderLogs() {
+  const content = document.getElementById('admin2-content');
+  const r = await fetch('/admin/api/admin/security?resource=logs&limit=100');
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'Erreur');
+  if (!d.logs || d.logs.length === 0) { content.innerHTML = emptyBox('Aucun log'); return; }
+  const actionIcons = { device_register: '📱', game_spin: '🎡', game_slots: '🎰', ads_complete: '📺', task_complete: '✅', withdraw_paid: '💰', withdraw_rejected: '❌', limit_reached: '⚠️', mining_boost_bought: '⚡', ads_too_fast: '🚨' };
+  content.innerHTML = d.logs.map(l => '<div class="item-card"><div class="ic-img">' + (actionIcons[l.action] || '📌') + '</div><div class="ic-body"><div class="ic-name">' + escapeHtml(l.action) + ' <span class="badge blue">' + (l.user_id || '—') + '</span></div><div class="ic-meta"><span>👤 ' + escapeHtml(l.users?.first_name || 'Inconnu') + '</span><span class="dot">•</span><span>@' + escapeHtml(l.users?.username || '—') + '</span></div><div class="ic-desc" style="font-family:monospace;font-size:10px;">' + escapeHtml(JSON.stringify(l.details || {})) + '</div><div class="ic-meta" style="font-size:10px;"><span>' + timeAgo(l.created_at) + '</span></div></div></div>').join('');
+}
+
+async function renderAlerts() {
+  const content = document.getElementById('admin2-content');
+  const r = await fetch('/admin/api/admin/security?resource=alerts');
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'Erreur');
+  const alerts = d.alerts || [];
+  const badge = document.getElementById('admin2AlertCount');
+  if (badge) { badge.textContent = alerts.length + ' alertes'; if (alerts.length > 0) badge.classList.add('show'); }
+  if (alerts.length === 0) { content.innerHTML = emptyBox('✅ Aucune alerte'); return; }
+  let html = '';
+  const multi = alerts.filter(a => a.type === 'multi_device');
+  if (multi.length > 0) {
+    html += '<h3 style="font-weight:800;color:#b91c1c;margin-bottom:10px;">🚨 Multi-comptes détectés</h3>';
+    html += multi.map(a => '<div class="item-card" style="border-left:4px solid #dc2626;"><div class="ic-img" style="background:rgba(220,38,38,.1);">⚠️</div><div class="ic-body"><div class="ic-name">Device partagé par ' + a.count + ' comptes</div><div class="ic-meta"><span>🔑 ' + escapeHtml(a.device_hash.slice(0, 16)) + '...</span></div><div class="ic-desc">User IDs : ' + a.users.map(u => '<code>' + u + '</code>').join(', ') + '</div></div></div>').join('');
+  }
+  const spam = alerts.filter(a => a.type === 'limit_spam');
+  if (spam.length > 0) {
+    html += '<h3 style="font-weight:800;color:#ea580c;margin:20px 0 10px;">⚠️ Utilisateurs spam limites</h3>';
+    html += spam.map(a => '<div class="item-card" style="border-left:4px solid #ea580c;"><div class="ic-img" style="background:rgba(234,88,12,.1);">🚫</div><div class="ic-body"><div class="ic-name">Utilisateur #' + a.user_id + ' a atteint ' + a.count + ' fois les limites</div><div class="ic-meta"><span>👤 ' + escapeHtml(a.name || 'Inconnu') + '</span></div><div class="ic-desc">Dernière fois : ' + timeAgo(a.last_at) + '</div></div></div>').join('');
+  }
+  content.innerHTML = html || emptyBox('Aucune alerte');
+}
+
+async function renderDevices() {
+  const content = document.getElementById('admin2-content');
+  const r = await fetch('/admin/api/admin/security?resource=devices');
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'Erreur');
+  if (!d.devices || d.devices.length === 0) { content.innerHTML = emptyBox('Aucun device'); return; }
+  content.innerHTML = d.devices.map(dev => '<div class="item-card"><div class="ic-img">📱</div><div class="ic-body"><div class="ic-name">Device <code style="font-size:10px;">' + escapeHtml(dev.device_hash.slice(0, 16)) + '...</code></div><div class="ic-meta"><span>👥 ' + dev.user_count + ' user' + (dev.user_count > 1 ? 's' : '') + '</span>' + (dev.user_count > 1 ? '<span class="badge red">⚠️ Multi</span>' : '') + '</div><div class="ic-meta" style="font-size:10.5px;"><span>Premier : ' + timeAgo(dev.first_seen) + '</span><span class="dot">•</span><span>Dernier : ' + timeAgo(dev.last_seen) + '</span></div></div></div>').join('');
+}
+
+async function renderCounters() {
+  const content = document.getElementById('admin2-content');
+  const r = await fetch('/admin/api/admin/security?resource=counters');
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || 'Erreur');
+  if (!d.counters || d.counters.length === 0) { content.innerHTML = emptyBox('Aucun compteur'); return; }
+  const t = d.totals || {};
+  content.innerHTML = '<div class="config-group"><div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Total des actions aujourd hui</div>' +
+    '<div class="config-row"><div class="cr-info"><div class="cr-label">🎡 Tours de roue</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.wheel || 0) + '</div></div>' +
+    '<div class="config-row"><div class="cr-info"><div class="cr-label">🎰 Parties machine a sous</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.slots || 0) + '</div></div>' +
+    '<div class="config-row"><div class="cr-info"><div class="cr-label">📺 Pubs vues</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.ads || 0) + '</div></div>' +
+    '<div class="config-row"><div class="cr-info"><div class="cr-label">⛏️ Clics de minage</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.mining || 0) + '</div></div>' +
+    '<div class="config-row"><div class="cr-info"><div class="cr-label">🎯 Taches validees</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-orange);">' + (t.tasks || 0) + '</div></div>' +
+    '<div class="config-row"><div class="cr-info"><div class="cr-label">💰 Total distribue aujourd hui</div></div><div style="font-weight:800;font-size:18px;color:var(--kobo-green);">' + Math.round(t.earned || 0) + ' Kobo</div></div></div>' +
+    '<h3 style="font-weight:800;margin:20px 0 10px;">Top 20 utilisateurs actifs</h3>' +
+    d.counters.map(c => '<div class="item-card"><div class="ic-img">👤</div><div class="ic-body"><div class="ic-name">' + escapeHtml(c.users?.first_name || 'User #' + c.user_id) + '</div><div class="ic-meta"><span>🎡 ' + (c.wheel_paid + c.wheel_free) + '</span><span class="dot">•</span><span>🎰 ' + c.slots + '</span><span class="dot">•</span><span>📺 ' + c.ads + '</span><span class="dot">•</span><span>⛏️ ' + c.mining + '</span></div><div class="ic-meta"><span style="color:var(--kobo-green);font-weight:700;">💰 ' + Math.round(c.total_earned) + ' Kobo</span></div></div></div>').join('');
+}
+
+async function renderBans() {
+  const content = document.getElementById('admin2-content');
+  const banned = DATA.users.filter(u => u.is_banned);
+  if (banned.length === 0) { content.innerHTML = emptyBox('✅ Aucun utilisateur banni'); return; }
+  content.innerHTML = banned.map(u => '<div class="item-card" style="border-left:4px solid #dc2626;"><div class="ic-img" style="background:rgba(220,38,38,.1);">🚫</div><div class="ic-body"><div class="ic-name">' + escapeHtml(u.first_name || 'Utilisateur') + ' <span class="badge red">Banni</span></div><div class="ic-meta"><span>@' + escapeHtml(u.username || '—') + '</span><span class="dot">•</span><span>ID ' + u.telegram_id + '</span></div><div class="ic-meta"><span>💰 ' + u.balance + ' Kobo</span></div></div><div class="ic-actions"><button class="icon-btn" onclick="unbanUser(' + u.telegram_id + ')">🔓</button></div></div>').join('');
+}
+
+async function unbanUser(id) {
+  if (!confirm('Debannir cet utilisateur ?')) return;
+  await apiSend('user', 'PATCH', { telegram_id: id, is_banned: false });
+  showToast('Debanni');
+  const users = await apiGet('users'); DATA.users = users.data || [];
+  DATA.admins = DATA.users.filter(u => u.is_admin);
+  renderUsers(); renderBans();
+}
