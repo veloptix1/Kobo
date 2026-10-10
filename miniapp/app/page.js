@@ -19,73 +19,103 @@ export default function Home() {
         });
         const d = await r.json();
         if (d.ok) setUser(d.user);
-      } catch {}
+      } catch (e) { console.error(e); }
       setLoading(false);
     })();
   }, []);
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="w-12 h-12 border-4 border-white/20 border-t-amber-500 rounded-full animate-spin" />
+      <div className="text-white/60 text-sm">Chargement...</div>
+    </div>
+  );
+
   if (!user) return (
     <div className="p-8 text-center">
-      <div className="text-2xl font-bold mb-4">Kobo</div>
+      <div className="text-3xl font-bold mb-4">Kobo</div>
       <p className="text-white/60">Ouvre cette app depuis le bot Kobo sur Telegram.</p>
     </div>
   );
 
   return (
     <div className="min-h-screen pb-24">
-      <header className="p-5 flex items-center justify-between">
-        <div>
-          <div className="text-white/60 text-sm">Bonjour,</div>
-          <div className="text-xl font-bold">{user.first_name || 'Utilisateur'}</div>
+      <header className="header-app">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center font-black text-[#0A1F44]">
+            K
+          </div>
+          <div>
+            <div className="font-bold leading-tight">{user.first_name || 'Utilisateur'}</div>
+            <div className="text-white/60 text-xs">@{user.username || '—'}</div>
+          </div>
         </div>
-        <Link href="/profile" className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-xl font-bold">
-          {(user.first_name || 'U').charAt(0).toUpperCase()}
+        <Link href="/profile" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 3a4 4 0 100 8 4 4 0 000-8z" />
+          </svg>
         </Link>
       </header>
 
-      <div className="px-5 mb-6">
-        <div className="bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30 rounded-3xl p-6 text-center">
-          <div className="text-white/60 text-sm mb-1">Ton solde</div>
-          <div className="text-4xl font-bold text-amber-400 mb-1">{user.balance || 0}</div>
+      <div className="p-5">
+        <div className="rounded-3xl p-6 text-center bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30">
+          <div className="text-white/60 text-xs mb-1">Ton solde</div>
+          <div className="text-4xl font-black text-amber-400 mb-1">{Math.round(user.balance || 0)}</div>
           <div className="text-white/60 text-sm">Kobo</div>
-          <div className="text-white/40 text-xs mt-3">≈ {user.balance || 0} FCFA</div>
+          <div className="text-white/40 text-xs mt-3">≈ {Math.round(user.balance || 0)} FCFA</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 px-5 mb-6">
+      <div className="grid grid-cols-2 gap-3 px-5 mb-4">
         <Link href="/mine" className="card flex flex-col items-center py-5">
-          <div className="text-3xl mb-2">⛏️</div>
-          <div className="font-bold">Miner</div>
-          <div className="text-xs text-white/60">Gagner des Kobo</div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
+            <path d="M14 4l6 6-9 9H5v-6l9-9z" />
+            <path d="M3 21h18" />
+          </svg>
+          <div className="font-bold text-sm">Miner</div>
+          <div className="text-[10px] text-white/50">Gagner des Kobo</div>
         </Link>
         <Link href="/tasks" className="card flex flex-col items-center py-5">
-          <div className="text-3xl mb-2">🎯</div>
-          <div className="font-bold">Tâches</div>
-          <div className="text-xs text-white/60">Voir les missions</div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+          </svg>
+          <div className="font-bold text-sm">Tâches</div>
+          <div className="text-[10px] text-white/50">Voir les missions</div>
         </Link>
         <Link href="/referral" className="card flex flex-col items-center py-5">
-          <div className="text-3xl mb-2">👥</div>
-          <div className="font-bold">Parrainer</div>
-          <div className="text-xs text-white/60">Inviter des amis</div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+          </svg>
+          <div className="font-bold text-sm">Parrainer</div>
+          <div className="text-[10px] text-white/50">Inviter des amis</div>
         </Link>
         <Link href="/games" className="card flex flex-col items-center py-5">
-          <div className="text-3xl mb-2">🎰</div>
-          <div className="font-bold">Jeux</div>
-          <div className="text-xs text-white/60">Gagner plus</div>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 6v6l4 2" />
+          </svg>
+          <div className="font-bold text-sm">Jeux</div>
+          <div className="text-[10px] text-white/50">Gagner plus</div>
         </Link>
       </div>
 
-      <div className="px-5 mb-6">
+      <div className="px-5">
         <Link href="/top" className="card flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="text-3xl">🏆</div>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 010-5H6M18 9h1.5a2.5 2.5 0 000-5H18M4 22h16M18 2H6v7a6 6 0 0012 0V2z" />
+            </svg>
             <div>
               <div className="font-bold">Classement</div>
-              <div className="text-xs text-white/60">Voir les meilleurs</div>
+              <div className="text-xs text-white/50">Voir les meilleurs</div>
             </div>
           </div>
-          <div className="text-white/40">→</div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </Link>
       </div>
 

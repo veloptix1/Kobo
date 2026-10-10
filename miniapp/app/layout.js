@@ -1,4 +1,6 @@
 import './globals.css';
+import Script from 'next/script';
+import ErrorBanner from '@/components/ErrorBanner';
 
 export const metadata = {
   title: 'Kobo',
@@ -11,9 +13,15 @@ export default function RootLayout({ children }) {
     <html lang="fr">
       <head>
         <meta name="theme-color" content="#0A1F44" />
-        <script src="https://telegram.org/js/telegram-web-app.js" async />
       </head>
-      <body>{children}</body>
+      <body>
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+        <ErrorBanner />
+        {children}
+      </body>
     </html>
   );
 }
