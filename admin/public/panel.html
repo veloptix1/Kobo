@@ -282,6 +282,7 @@ let ADV_DATA = [];
 
 (async function init() {
   try {
+    setTimeout(() => { const l = document.getElementById("loader"); if (l) l.classList.add("hidden"); }, 300);
     const [retraits, tasks, users, settings] = await Promise.all([
       apiGet('withdrawals'), apiGet('tasks'), apiGet('users'), apiGet('settings'),
     ]);
@@ -293,7 +294,6 @@ let ADV_DATA = [];
     await loadStats();
     renderRetraits(); renderTasks(); renderUsers(); renderAdmins();
     renderParrainage(); renderSettings(); loadAdvertisers();
-    setTimeout(() => document.getElementById('loader').classList.add('hidden'), 200);
   } catch (e) {
     console.error(e);
     document.getElementById('loader').innerHTML = '<div style="color:#fff;padding:20px;">Erreur : ' + e.message + '</div>';
