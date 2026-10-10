@@ -26,15 +26,15 @@ export default function Home() {
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <div className="w-12 h-12 border-4 border-white/20 border-t-amber-500 rounded-full animate-spin" />
-      <div className="text-white/60 text-sm">Chargement...</div>
+      <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+      <div className="text-gray-500 text-sm">Chargement...</div>
     </div>
   );
 
   if (!user) return (
     <div className="p-8 text-center">
-      <div className="text-3xl font-bold mb-4">Kobo</div>
-      <p className="text-white/60">Ouvre cette app depuis le bot Kobo sur Telegram.</p>
+      <div className="text-3xl font-bold mb-4 text-kobo-dark">Kobo</div>
+      <p className="text-gray-500">Ouvre cette app depuis le bot Kobo sur Telegram.</p>
     </div>
   );
 
@@ -51,37 +51,37 @@ export default function Home() {
           </div>
         </div>
         <Link href="/profile" className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 3a4 4 0 100 8 4 4 0 000-8z" />
           </svg>
         </Link>
       </header>
 
       <div className="p-5">
-        <div className="rounded-3xl p-6 text-center bg-gradient-to-br from-amber-500/20 to-orange-600/20 border border-amber-500/30">
-          <div className="text-white/60 text-xs mb-1">Ton solde</div>
-          <div className="text-4xl font-black text-amber-400 mb-1">{Math.round(user.balance || 0)}</div>
-          <div className="text-white/60 text-sm">Kobo</div>
-          <div className="text-white/40 text-xs mt-3">≈ {Math.round(user.balance || 0)} FCFA</div>
+        <div className="rounded-3xl p-6 text-center bg-gradient-to-br from-amber-100 to-orange-100 border border-amber-200">
+          <div className="text-gray-500 text-xs mb-1">Ton solde</div>
+          <div className="text-4xl font-black text-orange-600 mb-1">{Math.round(user.balance || 0)}</div>
+          <div className="text-gray-500 text-sm">Kobo</div>
+          <div className="text-gray-400 text-xs mt-3">≈ {Math.round(user.balance || 0)} FCFA</div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 px-5 mb-4">
         <Link href="/mine" className="card flex flex-col items-center py-5">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FFA500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
             <path d="M14 4l6 6-9 9H5v-6l9-9z" />
             <path d="M3 21h18" />
           </svg>
-          <div className="font-bold text-sm">Miner</div>
-          <div className="text-[10px] text-white/50">Gagner des Kobo</div>
+          <div className="font-bold text-sm text-gray-800">Miner</div>
+          <div className="text-[10px] text-gray-500">Gagner des Kobo</div>
         </Link>
         <Link href="/tasks" className="card flex flex-col items-center py-5">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
             <path d="M9 11l3 3L22 4" />
             <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
           </svg>
-          <div className="font-bold text-sm">Tâches</div>
-          <div className="text-[10px] text-white/50">Voir les missions</div>
+          <div className="font-bold text-sm text-gray-800">Tâches</div>
+          <div className="text-[10px] text-gray-500">Voir les missions</div>
         </Link>
         <Link href="/referral" className="card flex flex-col items-center py-5">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
@@ -89,16 +89,16 @@ export default function Home() {
             <circle cx="9" cy="7" r="4" />
             <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
           </svg>
-          <div className="font-bold text-sm">Parrainer</div>
-          <div className="text-[10px] text-white/50">Inviter des amis</div>
+          <div className="font-bold text-sm text-gray-800">Parrainer</div>
+          <div className="text-[10px] text-gray-500">Inviter des amis</div>
         </Link>
         <Link href="/games" className="card flex flex-col items-center py-5">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 6v6l4 2" />
           </svg>
-          <div className="font-bold text-sm">Jeux</div>
-          <div className="text-[10px] text-white/50">Gagner plus</div>
+          <div className="font-bold text-sm text-gray-800">Jeux</div>
+          <div className="text-[10px] text-gray-500">Gagner plus</div>
         </Link>
       </div>
 
@@ -109,11 +109,11 @@ export default function Home() {
               <path d="M6 9H4.5a2.5 2.5 0 010-5H6M18 9h1.5a2.5 2.5 0 000-5H18M4 22h16M18 2H6v7a6 6 0 0012 0V2z" />
             </svg>
             <div>
-              <div className="font-bold">Classement</div>
-              <div className="text-xs text-white/50">Voir les meilleurs</div>
+              <div className="font-bold text-gray-800">Classement</div>
+              <div className="text-xs text-gray-500">Voir les meilleurs</div>
             </div>
           </div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </Link>

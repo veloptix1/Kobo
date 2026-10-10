@@ -12,6 +12,7 @@
   --kobo-green: #10B981;
   --kobo-danger: #EF4444;
   --bg: #F7F9F8;
+  --card-bg: #FFFFFF;
   --text: #1a1a1a;
   --muted: #6b7280;
   --border: #e5e7eb;
@@ -19,8 +20,8 @@
 
 body {
   font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-  background: var(--kobo-deep);
-  color: #fff;
+  background: var(--bg);
+  color: var(--text);
   min-height: 100vh;
   padding-bottom: 80px;
   overflow-x: hidden;
@@ -28,16 +29,17 @@ body {
 
 input, textarea, select, button { font-family: inherit; }
 
-/* Cartes style admin */
+/* Cartes style admin CLAIR */
 .card {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
   border-radius: 1rem;
   padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   animation: fadeInUp .3s ease forwards;
 }
 
-/* Boutons style admin */
+/* Boutons */
 .btn-primary {
   background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold));
   color: #fff;
@@ -52,17 +54,18 @@ input, textarea, select, button { font-family: inherit; }
   border: none;
   cursor: pointer;
   transition: transform .15s;
+  box-shadow: 0 3px 10px rgba(255,107,0,.3);
 }
 .btn-primary:active { transform: scale(.97); }
 
 .btn-secondary {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
+  background: #fff;
+  color: var(--kobo-dark);
   font-weight: 600;
   padding: 0.85rem 1.25rem;
   border-radius: 12px;
   text-align: center;
-  border: none;
+  border: 1.5px solid var(--border);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -92,15 +95,15 @@ input, textarea, select, button { font-family: inherit; }
 .bottom-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  background: linear-gradient(180deg, rgba(10,31,68,0.95), var(--kobo-deep));
-  border-top: 1px solid rgba(255,255,255,0.1);
+  background: #FFFFFF;
+  border-top: 1px solid var(--border);
   display: flex;
   justify-content: space-around;
   align-items: center;
   padding: 8px 4px;
   z-index: 50;
-  backdrop-filter: blur(10px);
   padding-bottom: max(8px, env(safe-area-inset-bottom));
+  box-shadow: 0 -2px 12px rgba(0,0,0,.05);
 }
 
 .nav-item {
@@ -108,7 +111,7 @@ input, textarea, select, button { font-family: inherit; }
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  color: rgba(255,255,255,0.4);
+  color: #9ca3af;
   font-size: 10px;
   font-weight: 600;
   padding: 6px 12px;
@@ -120,14 +123,38 @@ input, textarea, select, button { font-family: inherit; }
 }
 
 .nav-item.active {
-  color: var(--kobo-gold);
-  background: rgba(255, 165, 0, 0.1);
+  color: var(--kobo-orange);
+  background: rgba(255, 107, 0, 0.1);
 }
 
 .nav-item svg {
   width: 22px;
   height: 22px;
   stroke: currentColor;
+}
+
+/* Header style admin CLAIR */
+.header-app {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+/* Header blanc (pour les pages intérieures) */
+.header-white {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
 }
 
 /* Animations */
@@ -148,19 +175,6 @@ input, textarea, select, button { font-family: inherit; }
 }
 .spin-slow { animation: spin-slow 20s linear infinite; }
 
-/* Header style admin */
-.header-app {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark));
-  color: #fff;
-}
-
 /* Badges */
 .badge {
   display: inline-flex;
@@ -173,8 +187,19 @@ input, textarea, select, button { font-family: inherit; }
   text-transform: uppercase;
   letter-spacing: .3px;
 }
-.badge.green { background: rgba(16,185,129,.15); color: #4ade80; }
+.badge.green { background: rgba(16,185,129,.15); color: #166534; }
 .badge.orange { background: rgba(255,107,0,.15); color: var(--kobo-orange); }
-.badge.red { background: rgba(239,68,68,.15); color: #f87171; }
-.badge.blue { background: rgba(59,130,246,.15); color: #60a5fa; }
-.badge.gold { background: rgba(255,165,0,.15); color: var(--kobo-gold); }
+.badge.red { background: rgba(239,68,68,.15); color: var(--kobo-danger); }
+.badge.blue { background: rgba(59,130,246,.15); color: #2563eb; }
+.badge.gold { background: rgba(255,165,0,.15); color: #B45309; }
+
+/* Texte gris */
+.text-muted { color: var(--muted); }
+
+/* Sections */
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--kobo-dark);
+  margin-bottom: 0.75rem;
+}

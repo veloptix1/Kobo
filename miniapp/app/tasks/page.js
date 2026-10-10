@@ -11,13 +11,15 @@ export default function Tasks() {
   async function load() {
     const initData = window.Telegram?.WebApp?.initData;
     if (!initData) { setLoading(false); return; }
-    const r = await fetch('/api/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData, action: 'list' }),
-    });
-    const d = await r.json();
-    if (d.ok) setTasks(d.tasks || []);
+    try {
+      const r = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, action: 'list' }),
+      });
+      const d = await r.json();
+      if (d.ok) setTasks(d.tasks || []);
+    } catch (e) { console.error(e); }
     setLoading(false);
   }
 
@@ -26,7 +28,6 @@ export default function Tasks() {
   async function complete(task) {
     if (!task.canDo) return;
     if (task.link) window.open(task.link, '_blank');
-
     if (!confirm(`Valider "${task.title}" et recevoir ${task.reward} Kobo ?`)) return;
 
     const initData = window.Telegram?.WebApp?.initData;
@@ -38,12 +39,9 @@ export default function Tasks() {
     const d = await r.json();
     if (d.ok) {
       setToast(`+${d.reward} Kobo !`);
-      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
       setTimeout(() => setToast(null), 2000);
       load();
-    } else {
-      alert(d.error);
-    }
+    } else alert(d.error);
   }
 
   const filtered = tasks.filter((t) => {
@@ -54,8 +52,8 @@ export default function Tasks() {
 
   return (
     <div className="min-h-screen pb-24">
-      <header className="p-5">
-        <h1 className="text-2xl font-bold mb-4">🎯 Tâches</h1>
+      <header className="p-5 bg-white border-b border-gray-200 sticky top-0 z-50">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">🎯 Tâches</h1>
         <div className="flex gap-2 overflow-x-auto">
           {[
             { k: 'all', l: 'Toutes' },
@@ -66,9 +64,7 @@ export default function Tasks() {
               key={f.k}
               onClick={() => setFilter(f.k)}
               className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap ${
-                filter === f.k
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-500'
-                  : 'bg-white/5 text-white/60'
+                filter === f.k ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white' : 'bg-gray-100 text-gray-600'
               }`}
             >
               {f.l}
@@ -77,42 +73,30 @@ export default function Tasks() {
         </div>
       </header>
 
-      <div className="px-5 space-y-3">
+      <div className="px-5 pt-4 space-y-3">
         {loading ? (
-          <div className="text-center text-white/50 py-10">Chargement...</div>
+          <div className="text-center text-gray-400 py-10">Chargement...</div>
         ) : filtered.length === 0 ? (
-          <div className="card text-center py-10 text-white/50">Aucune tâche</div>
+          <div className="card text-center py-10 text-gray-400">Aucune tâche</div>
         ) : (
           filtered.map((t) => (
             <div key={t.id} className="card">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  <div className="font-bold text-base mb-1">{t.title}</div>
-                  {t.description && (
-                    <div className="text-xs text-white/60 mb-2">{t.description}</div>
-                  )}
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-amber-400 font-bold">💰 {t.reward} Kobo</span>
-                    <span className="text-white/40 text-xs">{t.type}</span>
-                  </div>
+              <div className="mb-3">
+                <div className="font-bold text-base mb-1 text-gray-900">{t.title}</div>
+                {t.description && <div className="text-xs text-gray-500 mb-2">{t.description}</div>}
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-orange-600 font-bold">💰 {t.reward} Kobo</span>
+                  <span className="text-gray-400 text-xs">{t.type}</span>
                 </div>
               </div>
               <button
                 onClick={() => complete(t)}
                 disabled={!t.canDo}
                 className={`w-full py-3 rounded-xl font-semibold ${
-                  t.canDo
-                    ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white'
-                    : 'bg-white/5 text-white/40'
+                  t.canDo ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white' : 'bg-gray-100 text-gray-400'
                 }`}
               >
-                {!t.canDo
-                  ? t.hasPending
-                    ? '⏳ En attente'
-                    : '✅ Terminée'
-                  : t.link
-                  ? '▶️ Commencer'
-                  : "✅ J'ai terminé"}
+                {!t.canDo ? (t.hasPending ? '⏳ En attente' : '✅ Terminée') : t.link ? '▶️ Commencer' : "✅ J'ai terminé"}
               </button>
             </div>
           ))
