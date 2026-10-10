@@ -1,0 +1,52 @@
+
+  // ===== Paramètres : sous-menus =====
+  bot.callbackQuery('settings:back', async (ctx) => {
+    try {
+      const { settingsCommand } = await import('../commands/settings.js');
+      await ctx.answerCallbackQuery();
+      await settingsCommand(ctx);
+    } catch (e) {
+      console.error('Settings back error:', e);
+      await ctx.answerCallbackQuery({ text: '❌ ' + e.message, show_alert: true });
+    }
+  });
+
+  bot.callbackQuery('settings:lang', async (ctx) => {
+    try {
+      const { showLanguages } = await import('../commands/settings.js');
+      await showLanguages(ctx);
+    } catch (e) {
+      console.error('Show languages error:', e);
+      await ctx.answerCallbackQuery({ text: '❌ ' + e.message, show_alert: true });
+    }
+  });
+
+  bot.callbackQuery('settings:currency', async (ctx) => {
+    try {
+      const { showCurrencies } = await import('../commands/settings.js');
+      await showCurrencies(ctx);
+    } catch (e) {
+      console.error('Show currencies error:', e);
+      await ctx.answerCallbackQuery({ text: '❌ ' + e.message, show_alert: true });
+    }
+  });
+
+  bot.callbackQuery(/^settings:setlang:(.+)$/, async (ctx) => {
+    try {
+      const { setLanguage } = await import('../commands/settings.js');
+      await setLanguage(ctx, ctx.match[1]);
+    } catch (e) {
+      console.error('Set lang error:', e);
+      await ctx.answerCallbackQuery({ text: '❌ ' + e.message, show_alert: true });
+    }
+  });
+
+  bot.callbackQuery(/^settings:setcurr:(.+)$/, async (ctx) => {
+    try {
+      const { setCurrency } = await import('../commands/settings.js');
+      await setCurrency(ctx, ctx.match[1]);
+    } catch (e) {
+      console.error('Set currency error:', e);
+      await ctx.answerCallbackQuery({ text: '❌ ' + e.message, show_alert: true });
+    }
+  });
