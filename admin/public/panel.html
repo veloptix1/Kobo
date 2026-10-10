@@ -6,7 +6,7 @@
 <title>Kobo Admin</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  :root { --kobo-gold: #FFA500; --kobo-orange: #FF6B00; --kobo-dark: #0A1F44; --kobo-deep: #061530; --kobo-green: #10B981; --kobo-danger: #EF4444; --bg: #F7F9F8; --text: #1a1a1a; --muted: #6b7280; --border: #e5e7eb; }
+  :root { --kobo-gold: #FFA500; --kobo-orange: #FF6B00; --kobo-dark: #0A1F44; --kobo-deep: #061530; --kobo-green: #10B981; --kobo-danger: #EF4444; --kobo-vip: #9333EA; --bg: #F7F9F8; --text: #1a1a1a; --muted: #6b7280; --border: #e5e7eb; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 30px; }
   input, textarea, select { -webkit-user-select: text; user-select: text; }
   .loader { position: fixed; inset: 0; z-index: 9999; background: var(--kobo-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; transition: opacity .5s, visibility .5s; }
@@ -15,13 +15,12 @@
   .loader-logo span { color: var(--kobo-gold); }
   .spinner { width: 46px; height: 46px; border: 4px solid rgba(255,255,255,.2); border-top-color: var(--kobo-gold); border-radius: 50%; animation: spin .9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
   .header { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: linear-gradient(135deg, var(--kobo-deep), var(--kobo-dark)); color: #fff; }
   .header-logo-wrap { display: flex; align-items: center; gap: 10px; }
   .logo { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; }
   .logo .badge-admin { background: linear-gradient(135deg, var(--kobo-gold), var(--kobo-orange)); color: #fff; font-size: 9px; padding: 3px 8px; border-radius: 8px; text-transform: uppercase; letter-spacing: .5px; font-weight: 800; }
   .btn-exit { background: rgba(255,255,255,.15); border: none; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: #fff; font-size: 18px; }
-  .tabs { background: #fff; padding: 8px 10px; display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 64px; z-index: 99; -ms-overflow-style: none; scrollbar-width: none; }
+  .tabs { background: #fff; padding: 8px 10px; display: flex; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--border); position: sticky; top: 64px; z-index: 99; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
   .tab { padding: 10px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; background: #f7faf8; color: var(--muted); border: none; cursor: pointer; font-family: inherit; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
   .tab.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; }
@@ -55,7 +54,8 @@
   .badge.red { background: rgba(239,68,68,.15); color: var(--kobo-danger); }
   .badge.blue { background: rgba(59,130,246,.15); color: #2563eb; }
   .badge.gray { background: rgba(107,114,128,.15); color: #4b5563; }
-  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; -ms-overflow-style: none; scrollbar-width: none; }
+  .badge.vip { background: linear-gradient(135deg, rgba(147,51,234,.15), rgba(217,70,239,.15)); color: var(--kobo-vip); }
+  .filter-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; scrollbar-width: none; }
   .filter-row::-webkit-scrollbar { display: none; }
   .filter-chip { padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #fff; border: 1.5px solid var(--border); color: var(--muted); cursor: pointer; font-family: inherit; white-space: nowrap; }
   .filter-chip.active { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); color: #fff; border-color: transparent; }
@@ -85,7 +85,26 @@
   .config-row .cr-info { flex: 1; min-width: 0; }
   .config-row .cr-label { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
   .config-row .cr-cle { font-size: 10.5px; color: var(--muted); font-family: monospace; }
-  .config-row input { width: 120px; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 14px; font-weight: 700; text-align: right; font-family: inherit; outline: none; background: #f7faf8; }
+  .config-row input[type="text"] { width: 120px; padding: 9px 10px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 14px; font-weight: 700; text-align: right; font-family: inherit; outline: none; background: #f7faf8; }
+  /* Toggle */
+  .toggle { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; transition: .3s; border-radius: 26px; }
+  .toggle-slider::before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: white; transition: .3s; border-radius: 50%; }
+  .toggle input:checked + .toggle-slider { background: linear-gradient(135deg, var(--kobo-orange), var(--kobo-gold)); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(22px); }
+  /* Tags */
+  .tag-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+  .tag-item { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: linear-gradient(135deg, rgba(255,107,0,.1), rgba(255,165,0,.15)); border: 1px solid rgba(255,107,0,.3); border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--kobo-orange); }
+  .tag-item input { width: 60px; padding: 2px 4px; border: none; background: transparent; font-size: 12px; font-weight: 700; color: var(--kobo-orange); text-align: center; outline: none; }
+  .tag-item button { background: none; border: none; cursor: pointer; color: var(--kobo-danger); font-size: 14px; font-weight: 800; padding: 0; line-height: 1; }
+  .tag-add { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f7faf8; border: 1.5px dashed var(--border); border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; font-family: inherit; }
+  .tag-add:hover { border-color: var(--kobo-gold); color: var(--kobo-orange); }
+  /* Checkboxes */
+  .checkbox-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .checkbox-item { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; background: #f7faf8; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .checkbox-item input { width: auto; }
+  .checkbox-item.checked { background: linear-gradient(135deg, rgba(255,107,0,.1), rgba(255,165,0,.15)); border-color: var(--kobo-orange); color: var(--kobo-orange); }
   .toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(20px); background: var(--kobo-dark); color: #fff; padding: 12px 22px; border-radius: 30px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: all .3s; z-index: 1000; max-width: 90%; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.error { background: #b91c1c; }
@@ -111,6 +130,7 @@
   <button class="tab" data-tab="retraits">💸 Retraits <span class="tab-badge" id="retraitsBadge"></span></button>
   <button class="tab" data-tab="tasks">🎯 Tâches</button>
   <button class="tab" data-tab="users">👥 Users</button>
+  <button class="tab" data-tab="admins">👑 Admins 2</button>
   <button class="tab" data-tab="parrainage">🤝 Parrainage</button>
   <button class="tab" data-tab="settings">⚙️ Réglages</button>
   <button class="tab" data-tab="broadcast">📢 Annonce</button>
@@ -140,6 +160,16 @@
     <input type="text" class="search-full" id="usersSearch" placeholder="🔍 Rechercher..." oninput="renderUsers()">
     <div id="usersList"></div>
   </div>
+  <div class="panel" id="panel-admins">
+    <div class="admin-toolbar"><h2>👑 Administrateurs</h2><button class="btn-add" onclick="openAdminModal()">➕ Nouveau</button></div>
+    <div class="config-group" style="background:linear-gradient(135deg,rgba(255,107,0,.06),rgba(255,165,0,.06));border:1px solid rgba(255,107,0,.25);margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;">
+        ⚠️ Les administrateurs peuvent accéder au panel et gérer toutes les données. Ajoute uniquement des personnes de confiance.
+      </div>
+    </div>
+    <input type="text" class="search-full" id="adminsSearch" placeholder="🔍 Rechercher par ID ou nom..." oninput="renderAdmins()">
+    <div id="adminsList"></div>
+  </div>
   <div class="panel" id="panel-parrainage">
     <div class="admin-toolbar"><h2>Réseau de parrainage</h2></div>
     <div class="stats-grid" id="parrainStats"></div>
@@ -147,7 +177,7 @@
     <div id="parrainList"></div>
   </div>
   <div class="panel" id="panel-settings">
-    <div class="admin-toolbar"><h2>Paramètres</h2><button class="btn-add" onclick="saveAllSettings()">💾 Enregistrer</button></div>
+    <div class="admin-toolbar"><h2>Paramètres</h2></div>
     <input type="text" class="search-full" id="settingsSearch" placeholder="🔍 Rechercher..." oninput="renderSettings()">
     <div id="settingsList"></div>
   </div>
@@ -202,11 +232,11 @@
 const API = '/admin/api/admin/data';
 
 async function apiGet(resource) {
-  const r = await fetch(`${API}?resource=${resource}`);
+  const r = await fetch(API + '?resource=' + resource);
   return r.json();
 }
 async function apiSend(resource, method, body) {
-  const r = await fetch(`${API}?resource=${resource}`, {
+  const r = await fetch(API + '?resource=' + resource, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -214,29 +244,23 @@ async function apiSend(resource, method, body) {
   return r.json();
 }
 
-let DATA = { retraits: [], tasks: [], users: [], settings: [] };
+let DATA = { retraits: [], tasks: [], users: [], settings: [], admins: [] };
 let RETRAIT_FILTER = 'pending';
 let ADV_DATA = [];
 
 (async function init() {
   try {
     const [retraits, tasks, users, settings] = await Promise.all([
-      apiGet('withdrawals'),
-      apiGet('tasks'),
-      apiGet('users'),
-      apiGet('settings'),
+      apiGet('withdrawals'), apiGet('tasks'), apiGet('users'), apiGet('settings'),
     ]);
     DATA.retraits = retraits.data || [];
     DATA.tasks = tasks.data || [];
     DATA.users = users.data || [];
     DATA.settings = settings.data || [];
+    DATA.admins = DATA.users.filter(u => u.is_admin);
     await loadStats();
-    renderRetraits();
-    renderTasks();
-    renderUsers();
-    renderParrainage();
-    renderSettings();
-    loadAdvertisers();
+    renderRetraits(); renderTasks(); renderUsers(); renderAdmins();
+    renderParrainage(); renderSettings(); loadAdvertisers();
     setTimeout(() => document.getElementById('loader').classList.add('hidden'), 200);
   } catch (e) {
     console.error(e);
@@ -264,12 +288,13 @@ async function loadStats() {
     { l: 'Total distribué', v: Math.round(s.totalEarned || 0) },
     { l: 'Total retiré', v: Math.round(s.totalWithdrawn || 0) },
   ];
-  grid.innerHTML = stats.map(x => `<div class="stat-box"><div class="lbl">${x.l}</div><div class="val">${x.v}</div></div>`).join('');
+  grid.innerHTML = stats.map(x => '<div class="stat-box"><div class="lbl">' + x.l + '</div><div class="val">' + x.v + '</div></div>').join('');
   const badge = document.getElementById('retraitsBadge');
   if (s.pendingWD > 0) { badge.textContent = s.pendingWD; badge.classList.add('show'); }
   else badge.classList.remove('show');
 }
 
+// ==================== RETRAITS ====================
 function renderRetraits() {
   const list = document.getElementById('retraitsList');
   const q = (document.getElementById('retraitsSearch')?.value || '').toLowerCase().trim();
@@ -281,19 +306,14 @@ function renderRetraits() {
   list.innerHTML = f.map(r => {
     const u = r.users || {};
     const s = { pending: {l:'En attente',c:'orange'}, paid: {l:'Payé',c:'green'}, rejected: {l:'Rejeté',c:'red'} }[r.status] || {l:r.status,c:'gray'};
-    return `<div class="item-card">
-      <div class="ic-img">💸</div>
-      <div class="ic-body">
-        <div class="ic-name">${escapeHtml(u.first_name||'Utilisateur')} <span class="badge ${s.c}">${s.l}</span></div>
-        <div class="ic-meta"><span>💰 ${r.amount_kobo} Kobo</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">${r.amount_target} ${r.target_currency}</span></div>
-        <div class="ic-meta"><span>📱 ${escapeHtml(r.method)}</span><span class="dot">•</span><span>📍 ${escapeHtml(r.destination)}</span></div>
-        <div class="ic-meta" style="font-size:10.5px;"><span>${timeAgo(r.created_at)} · ID #${r.id}</span></div>
-      </div>
-      <div class="ic-actions">${r.status === 'pending' ? `
-        <button class="icon-btn" onclick="wdAction(${r.id}, 'paid')">✅</button>
-        <button class="icon-btn" onclick="wdAction(${r.id}, 'rejected')">❌</button>
-      ` : ''}</div>
-    </div>`;
+    return '<div class="item-card"><div class="ic-img">💸</div><div class="ic-body">' +
+      '<div class="ic-name">' + escapeHtml(u.first_name||'Utilisateur') + ' <span class="badge ' + s.c + '">' + s.l + '</span></div>' +
+      '<div class="ic-meta"><span>💰 ' + r.amount_kobo + ' Kobo</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">' + r.amount_target + ' ' + r.target_currency + '</span></div>' +
+      '<div class="ic-meta"><span>📱 ' + escapeHtml(r.method) + '</span><span class="dot">•</span><span>📍 ' + escapeHtml(r.destination) + '</span></div>' +
+      '<div class="ic-meta" style="font-size:10.5px;"><span>' + timeAgo(r.created_at) + ' · ID #' + r.id + '</span></div>' +
+      '</div><div class="ic-actions">' + (r.status === 'pending' ?
+        '<button class="icon-btn" onclick="wdAction(' + r.id + ', \'paid\')">✅</button><button class="icon-btn" onclick="wdAction(' + r.id + ', \'rejected\')">❌</button>' : '') +
+      '</div></div>';
   }).join('');
 }
 
@@ -304,59 +324,52 @@ document.getElementById('retraitsFilters').addEventListener('click', (e) => {
 });
 
 async function wdAction(id, status) {
-  if (!confirm(`Confirmer ${status === 'paid' ? 'le paiement' : 'le refus'} ?`)) return;
+  if (!confirm('Confirmer ' + (status === 'paid' ? 'le paiement' : 'le refus') + ' ?')) return;
   const r = await apiSend('withdrawal', 'PATCH', { id, status });
   if (r.error) return showToast('Erreur : ' + r.error, true);
   showToast('✅ Retrait mis à jour');
   const fresh = await apiGet('withdrawals');
   DATA.retraits = fresh.data || [];
-  renderRetraits();
-  loadStats();
+  renderRetraits(); loadStats();
 }
 
+// ==================== TÂCHES ====================
 function renderTasks() {
   const list = document.getElementById('tasksList');
   const q = (document.getElementById('tasksSearch')?.value || '').toLowerCase().trim();
   let f = DATA.tasks;
   if (q) f = f.filter(t => (t.title||'').toLowerCase().includes(q));
   if (f.length === 0) { list.innerHTML = emptyBox('Aucune tâche'); return; }
-  list.innerHTML = f.map(t => `<div class="item-card">
-    <div class="ic-img">${t.is_active ? '🎯' : '🚫'}</div>
-    <div class="ic-body">
-      <div class="ic-name">${escapeHtml(t.title)} ${t.is_active ? '' : '<span class="badge red">Inactif</span>'}</div>
-      <div class="ic-meta"><span class="badge blue">${t.type}</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">💰 ${t.reward} Kobo</span>${t.advertiser_id ? '<span class="dot">•</span><span style="color:#9333EA;font-weight:700;">🏢 Annonceur</span>' : ''}</div>
-      ${t.description ? `<div class="ic-desc">${escapeHtml(t.description)}</div>` : ''}
-    </div>
-    <div class="ic-actions">
-      <button class="icon-btn" onclick="openTaskModal(${t.id})">✏️</button>
-      <button class="icon-btn" onclick="toggleTask(${t.id})">${t.is_active ? '⏸️' : '▶️'}</button>
-      <button class="icon-btn" onclick="deleteTask(${t.id})">🗑️</button>
-    </div>
-  </div>`).join('');
+  list.innerHTML = f.map(t => '<div class="item-card"><div class="ic-img">' + (t.is_active ? '🎯' : '🚫') + '</div><div class="ic-body">' +
+    '<div class="ic-name">' + escapeHtml(t.title) + ' ' + (t.is_active ? '' : '<span class="badge red">Inactif</span>') + '</div>' +
+    '<div class="ic-meta"><span class="badge blue">' + t.type + '</span><span class="dot">•</span><span style="color:var(--kobo-orange);font-weight:700;">💰 ' + t.reward + ' Kobo</span>' + (t.advertiser_id ? '<span class="dot">•</span><span style="color:#9333EA;font-weight:700;">🏢 Annonceur</span>' : '') + '</div>' +
+    (t.description ? '<div class="ic-desc">' + escapeHtml(t.description) + '</div>' : '') +
+    '</div><div class="ic-actions">' +
+    '<button class="icon-btn" onclick="openTaskModal(' + t.id + ')">✏️</button>' +
+    '<button class="icon-btn" onclick="toggleTask(' + t.id + ')">' + (t.is_active ? '⏸️' : '▶️') + '</button>' +
+    '<button class="icon-btn" onclick="deleteTask(' + t.id + ')">🗑️</button>' +
+    '</div></div>').join('');
 }
 
 function openTaskModal(id) {
   const t = id ? DATA.tasks.find(x => x.id === id) : { title:'', description:'', type:'one_time', reward:0, link:'', channel_id:'', daily_limit:1, is_active:true };
-  const advOptions = (ADV_DATA || []).map(a => `<option value="${a.id}" ${t.advertiser_id === a.id ? 'selected' : ''}>${escapeHtml(a.name)} (${Math.round(a.balance)} Kobo)</option>`).join('');
-  openModal(id ? 'Modifier' : 'Nouvelle tâche', `
-    <div class="form-group"><label>Titre</label><input id="tTitle" value="${escapeHtml(t.title)}"></div>
-    <div class="form-group"><label>Description</label><textarea id="tDesc">${escapeHtml(t.description||'')}</textarea></div>
-    <div class="form-row">
-      <div class="form-group"><label>Type</label><select id="tType">${['one_time','daily','channel_join','watch_ad','share_link','signup','custom'].map(v => `<option ${t.type===v?'selected':''}>${v}</option>`).join('')}</select></div>
-      <div class="form-group"><label>Récompense (Kobo)</label><input type="number" id="tReward" value="${t.reward}"></div>
-    </div>
-    <div class="form-group"><label>Annonceur (optionnel)</label>
-      <select id="tAdvertiser"><option value="">— Aucun —</option>${advOptions}</select>
-    </div>
-    <div class="form-group"><label>Coût annonceur / complétion (Kobo)</label><input type="number" id="tCost" value="${t.cost_per_completion || 0}"></div>
-    <div class="form-group"><label>Lien</label><input id="tLink" value="${escapeHtml(t.link||'')}"></div>
-    <div class="form-row">
-      <div class="form-group"><label>ID Canal</label><input id="tChannel" value="${escapeHtml(t.channel_id||'')}"></div>
-      <div class="form-group"><label>Limite/jour</label><input type="number" id="tDaily" value="${t.daily_limit || 1}"></div>
-    </div>
-    <div class="form-check"><input type="checkbox" id="tActive" ${t.is_active?'checked':''}><label for="tActive">Active</label></div>
-    <button class="btn-primary" onclick="saveTask(${id || 'null'})">💾 Enregistrer</button>
-  `);
+  const advOptions = (ADV_DATA || []).map(a => '<option value="' + a.id + '" ' + (t.advertiser_id === a.id ? 'selected' : '') + '>' + escapeHtml(a.name) + ' (' + Math.round(a.balance) + ' Kobo)</option>').join('');
+  openModal(id ? 'Modifier' : 'Nouvelle tâche',
+    '<div class="form-group"><label>Titre</label><input id="tTitle" value="' + escapeHtml(t.title) + '"></div>' +
+    '<div class="form-group"><label>Description</label><textarea id="tDesc">' + escapeHtml(t.description||'') + '</textarea></div>' +
+    '<div class="form-row">' +
+      '<div class="form-group"><label>Type</label><select id="tType">' + ['one_time','daily','channel_join','watch_ad','share_link','signup','custom'].map(v => '<option ' + (t.type===v?'selected':'') + '>' + v + '</option>').join('') + '</select></div>' +
+      '<div class="form-group"><label>Récompense (Kobo)</label><input type="number" id="tReward" value="' + t.reward + '"></div>' +
+    '</div>' +
+    '<div class="form-group"><label>Annonceur (optionnel)</label><select id="tAdvertiser"><option value="">— Aucun —</option>' + advOptions + '</select></div>' +
+    '<div class="form-group"><label>Coût annonceur / complétion (Kobo)</label><input type="number" id="tCost" value="' + (t.cost_per_completion || 0) + '"></div>' +
+    '<div class="form-group"><label>Lien</label><input id="tLink" value="' + escapeHtml(t.link||'') + '"></div>' +
+    '<div class="form-row">' +
+      '<div class="form-group"><label>ID Canal</label><input id="tChannel" value="' + escapeHtml(t.channel_id||'') + '"></div>' +
+      '<div class="form-group"><label>Limite/jour</label><input type="number" id="tDaily" value="' + (t.daily_limit || 1) + '"></div>' +
+    '</div>' +
+    '<div class="form-check"><input type="checkbox" id="tActive" ' + (t.is_active?'checked':'') + '><label for="tActive">Active</label></div>' +
+    '<button class="btn-primary" onclick="saveTask(' + (id || 'null') + ')">💾 Enregistrer</button>');
 }
 
 async function saveTask(id) {
@@ -374,7 +387,7 @@ async function saveTask(id) {
     is_active: document.getElementById('tActive').checked,
   };
   if (!payload.title) return showToast('Titre requis', true);
-  const r = id ? await apiSend('task', 'PATCH', { id, ...payload }) : await apiSend('task', 'POST', payload);
+  const r = id ? await apiSend('task', 'PATCH', Object.assign({ id }, payload)) : await apiSend('task', 'POST', payload);
   if (r.error) return showToast('Erreur : ' + r.error, true);
   showToast(id ? 'Modifié' : 'Créée');
   closeModal();
@@ -397,6 +410,7 @@ async function deleteTask(id) {
   renderTasks();
 }
 
+// ==================== USERS ====================
 function renderUsers() {
   const list = document.getElementById('usersList');
   const q = (document.getElementById('usersSearch')?.value || '').toLowerCase().trim();
@@ -404,32 +418,27 @@ function renderUsers() {
   if (q) f = f.filter(u => (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || String(u.telegram_id).includes(q));
   document.getElementById('usersCountBadge').textContent = DATA.users.length + ' users';
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun utilisateur'); return; }
-  list.innerHTML = f.slice(0, 100).map(u => `
-    <div class="item-card">
-      <div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">${escapeHtml((u.first_name || u.username || '?').charAt(0).toUpperCase())}</div>
-      <div class="ic-body">
-        <div class="ic-name">${escapeHtml(u.first_name || 'Utilisateur')} ${u.is_banned ? '<span class="badge red">Banni</span>' : ''} ${u.is_admin ? '<span class="badge orange">Admin</span>' : ''}</div>
-        <div class="ic-meta"><span>@${escapeHtml(u.username || '—')}</span><span class="dot">•</span><span>ID ${u.telegram_id}</span></div>
-        <div class="ic-meta"><span style="color:var(--kobo-orange);font-weight:800;">💰 ${u.balance} Kobo</span><span class="dot">•</span><span>retirable ${u.withdrawable_balance || 0}</span></div>
-      </div>
-      <div class="ic-actions">
-        <button class="icon-btn" onclick="editUser(${u.telegram_id})">✏️</button>
-        <button class="icon-btn" onclick="toggleBan(${u.telegram_id})">${u.is_banned ? '🔓' : '🚫'}</button>
-      </div>
-    </div>
-  `).join('');
+  list.innerHTML = f.slice(0, 100).map(u => '<div class="item-card">' +
+    '<div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">' + escapeHtml((u.first_name || u.username || '?').charAt(0).toUpperCase()) + '</div>' +
+    '<div class="ic-body">' +
+    '<div class="ic-name">' + escapeHtml(u.first_name || 'Utilisateur') + ' ' + (u.is_banned ? '<span class="badge red">Banni</span>' : '') + ' ' + (u.is_admin ? '<span class="badge orange">Admin</span>' : '') + '</div>' +
+    '<div class="ic-meta"><span>@' + escapeHtml(u.username || '—') + '</span><span class="dot">•</span><span>ID ' + u.telegram_id + '</span></div>' +
+    '<div class="ic-meta"><span style="color:var(--kobo-orange);font-weight:800;">💰 ' + u.balance + ' Kobo</span><span class="dot">•</span><span>retirable ' + (u.withdrawable_balance || 0) + '</span></div>' +
+    '</div><div class="ic-actions">' +
+    '<button class="icon-btn" onclick="editUser(' + u.telegram_id + ')">✏️</button>' +
+    '<button class="icon-btn" onclick="toggleBan(' + u.telegram_id + ')">' + (u.is_banned ? '🔓' : '🚫') + '</button>' +
+    '</div></div>').join('');
 }
 
 function editUser(id) {
   const u = DATA.users.find(x => x.telegram_id === id); if (!u) return;
-  openModal('Modifier ' + (u.first_name || 'Utilisateur'), `
-    <div class="form-group"><label>Prénom</label><input id="euName" value="${escapeHtml(u.first_name || '')}"></div>
-    <div class="form-group"><label>Solde Kobo</label><input type="number" id="euBalance" value="${u.balance}"></div>
-    <div class="form-group"><label>Solde retirable</label><input type="number" id="euWithdrawable" value="${u.withdrawable_balance || 0}"></div>
-    <div class="form-check"><input type="checkbox" id="euAdmin" ${u.is_admin?'checked':''}><label>Admin</label></div>
-    <div class="form-check"><input type="checkbox" id="euBanned" ${u.is_banned?'checked':''}><label>Banni</label></div>
-    <button class="btn-primary" onclick="saveUser(${id})">💾 Enregistrer</button>
-  `);
+  openModal('Modifier ' + (u.first_name || 'Utilisateur'),
+    '<div class="form-group"><label>Prénom</label><input id="euName" value="' + escapeHtml(u.first_name || '') + '"></div>' +
+    '<div class="form-group"><label>Solde Kobo</label><input type="number" id="euBalance" value="' + u.balance + '"></div>' +
+    '<div class="form-group"><label>Solde retirable</label><input type="number" id="euWithdrawable" value="' + (u.withdrawable_balance || 0) + '"></div>' +
+    '<div class="form-check"><input type="checkbox" id="euAdmin" ' + (u.is_admin?'checked':'') + '><label>Admin</label></div>' +
+    '<div class="form-check"><input type="checkbox" id="euBanned" ' + (u.is_banned?'checked':'') + '><label>Banni</label></div>' +
+    '<button class="btn-primary" onclick="saveUser(' + id + ')">💾 Enregistrer</button>');
 }
 
 async function saveUser(id) {
@@ -445,7 +454,8 @@ async function saveUser(id) {
   if (r.error) return showToast('Erreur : ' + r.error, true);
   showToast('Mis à jour'); closeModal();
   const users = await apiGet('users'); DATA.users = users.data || [];
-  renderUsers();
+  DATA.admins = DATA.users.filter(u => u.is_admin);
+  renderUsers(); renderAdmins();
 }
 
 async function toggleBan(id) {
@@ -457,6 +467,65 @@ async function toggleBan(id) {
   renderUsers(); loadStats();
 }
 
+// ==================== ADMINS ====================
+function renderAdmins() {
+  const list = document.getElementById('adminsList');
+  const q = (document.getElementById('adminsSearch')?.value || '').toLowerCase().trim();
+  let f = DATA.admins;
+  if (q) f = f.filter(u => (u.first_name||'').toLowerCase().includes(q) || (u.username||'').toLowerCase().includes(q) || String(u.telegram_id).includes(q));
+  if (f.length === 0) { list.innerHTML = emptyBox('Aucun administrateur'); return; }
+  list.innerHTML = f.map(u => '<div class="item-card">' +
+    '<div class="ic-img" style="background:linear-gradient(135deg,#9333EA,#EC4899);color:#fff;font-weight:900;">👑</div>' +
+    '<div class="ic-body">' +
+    '<div class="ic-name">' + escapeHtml(u.first_name || 'Admin') + ' <span class="badge vip">Administrateur</span></div>' +
+    '<div class="ic-meta"><span>@' + escapeHtml(u.username || '—') + '</span><span class="dot">•</span><span>ID ' + u.telegram_id + '</span></div>' +
+    '<div class="ic-meta" style="font-size:10.5px;"><span>Ajouté ' + timeAgo(u.created_at) + '</span></div>' +
+    '</div><div class="ic-actions">' +
+    '<button class="icon-btn" onclick="editAdmin(' + u.telegram_id + ')">✏️</button>' +
+    '<button class="icon-btn" onclick="removeAdmin(' + u.telegram_id + ')">🗑️</button>' +
+    '</div></div>').join('');
+}
+
+function openAdminModal() {
+  openModal('Ajouter un administrateur',
+    '<div class="form-group"><label>ID Telegram de l\'utilisateur</label><input id="admId" placeholder="Ex: 123456789" type="number"></div>' +
+    '<div class="config-group" style="background:#f7faf8;margin-bottom:14px;">' +
+      '<div style="font-size:12px;color:var(--muted);line-height:1.5;">💡 L\'utilisateur doit d\'abord avoir démarré le bot. Trouve son ID via @userinfobot sur Telegram.</div>' +
+    '</div>' +
+    '<button class="btn-primary" onclick="saveAdmin()">💾 Ajouter</button>');
+}
+
+async function saveAdmin() {
+  const id = Number(document.getElementById('admId').value);
+  if (!id) return showToast('ID requis', true);
+  const u = DATA.users.find(x => x.telegram_id === id);
+  if (!u) return showToast('Utilisateur introuvable. Doit avoir démarré le bot.', true);
+  await apiSend('user', 'PATCH', { telegram_id: id, is_admin: true });
+  showToast('✅ Admin ajouté');
+  closeModal();
+  const users = await apiGet('users'); DATA.users = users.data || [];
+  DATA.admins = DATA.users.filter(u => u.is_admin);
+  renderUsers(); renderAdmins();
+}
+
+function editAdmin(id) {
+  const u = DATA.admins.find(x => x.telegram_id === id); if (!u) return;
+  openModal('Modifier ' + (u.first_name || 'Admin'),
+    '<div class="form-group"><label>Prénom</label><input id="euName" value="' + escapeHtml(u.first_name || '') + '"></div>' +
+    '<div class="form-group"><label>ID Telegram</label><input value="' + u.telegram_id + '" disabled style="background:#f3f4f6;"></div>' +
+    '<button class="btn-primary" onclick="saveUser(' + id + ')">💾 Enregistrer</button>');
+}
+
+async function removeAdmin(id) {
+  if (!confirm('Retirer les droits admin ?')) return;
+  await apiSend('user', 'PATCH', { telegram_id: id, is_admin: false });
+  showToast('Admin retiré');
+  const users = await apiGet('users'); DATA.users = users.data || [];
+  DATA.admins = DATA.users.filter(u => u.is_admin);
+  renderUsers(); renderAdmins();
+}
+
+// ==================== PARRAINAGE ====================
 function renderParrainage() {
   const list = document.getElementById('parrainList');
   const stats = document.getElementById('parrainStats');
@@ -470,68 +539,146 @@ function renderParrainage() {
     groups[u.referred_by].filleuls.push(u);
   });
   const arr = Object.values(groups).sort((a, b) => b.filleuls.length - a.filleuls.length);
-  stats.innerHTML = `
-    <div class="stat-box"><div class="lbl">Parrains actifs</div><div class="val">${arr.length}</div></div>
-    <div class="stat-box" style="border-color:var(--kobo-orange);"><div class="lbl">Total filleuls</div><div class="val">${DATA.users.filter(u => u.referred_by).length}</div></div>
-  `;
+  stats.innerHTML = '<div class="stat-box"><div class="lbl">Parrains actifs</div><div class="val">' + arr.length + '</div></div>' +
+    '<div class="stat-box" style="border-color:var(--kobo-orange);"><div class="lbl">Total filleuls</div><div class="val">' + DATA.users.filter(u => u.referred_by).length + '</div></div>';
   const q = (document.getElementById('parrainSearch')?.value || '').toLowerCase().trim();
   let f = arr;
   if (q) f = f.filter(g => (g.parrain.first_name||'').toLowerCase().includes(q) || (g.parrain.username||'').toLowerCase().includes(q));
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun parrain'); return; }
   list.innerHTML = f.slice(0, 50).map(g => {
     const p = g.parrain; const c = g.filleuls.length;
-    return `<div class="item-card">
-      <div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">${escapeHtml((p.first_name||'?').charAt(0).toUpperCase())}</div>
-      <div class="ic-body">
-        <div class="ic-name">${escapeHtml(p.first_name || 'Inconnu')} <span class="badge orange">${c} filleul${c>1?'s':''}</span></div>
-        <div class="ic-meta"><span>@${escapeHtml(p.username || '—')}</span><span class="dot">•</span><span>💰 ${p.balance || 0} Kobo</span></div>
-      </div>
-    </div>`;
+    return '<div class="item-card"><div class="ic-img" style="background:linear-gradient(135deg,#FF6B00,#FFA500);color:#fff;font-weight:900;">' + escapeHtml((p.first_name||'?').charAt(0).toUpperCase()) + '</div>' +
+      '<div class="ic-body"><div class="ic-name">' + escapeHtml(p.first_name || 'Inconnu') + ' <span class="badge orange">' + c + ' filleul' + (c>1?'s':'') + '</span></div>' +
+      '<div class="ic-meta"><span>@' + escapeHtml(p.username || '—') + '</span><span class="dot">•</span><span>💰 ' + (p.balance || 0) + ' Kobo</span></div></div></div>';
   }).join('');
 }
 
+// ==================== SETTINGS VISUELS ====================
 function renderSettings() {
   const list = document.getElementById('settingsList');
   const q = (document.getElementById('settingsSearch')?.value || '').toLowerCase().trim();
   let f = DATA.settings;
   if (q) f = f.filter(s => s.key.toLowerCase().includes(q) || (s.description||'').toLowerCase().includes(q));
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun paramètre'); return; }
-  list.innerHTML = `<div class="config-group">${f.map(s => `
-    <div class="config-row">
-      <div class="cr-info">
-        <div class="cr-label">${escapeHtml(s.description || s.key)}</div>
-        <div class="cr-cle">${escapeHtml(s.key)}</div>
-      </div>
-      <input type="text" value='${JSON.stringify(s.value).replace(/'/g, "&#39;")}' data-key="${s.key}" class="setting-input">
-    </div>
-  `).join('')}</div>`;
+
+  const BOOLEAN_KEYS = ['mining_enabled','wheel_enabled','slots_enabled','leaderboard_enabled','ads_enabled','vip_enabled','marketplace_enabled','vip_priority_withdraw','task_auto_approve','bot_enabled'];
+  const NUM_ARR_KEYS = ['wheel_prizes','wheel_probabilities','slots_multipliers','slots_probabilities'];
+  const METHODS_KEYS = ['withdraw_methods'];
+  const CHANNEL_KEYS = ['withdrawal_channel_id'];
+  const CHANNELS_ARR = ['mandatory_channels'];
+
+  list.innerHTML = f.map(s => {
+    const key = s.key;
+    const desc = escapeHtml(s.description || key);
+
+    if (BOOLEAN_KEYS.includes(key)) {
+      const v = s.value === true || s.value === 'true';
+      return '<div class="config-row"><div class="cr-info"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
+        '<label class="toggle"><input type="checkbox" ' + (v ? 'checked' : '') + ' onchange="toggleBoolSetting(\'' + key + '\', this.checked)"><span class="toggle-slider"></span></label></div>';
+    }
+
+    if (METHODS_KEYS.includes(key)) {
+      const arr = Array.isArray(s.value) ? s.value : [];
+      const methods = [{ v: 'orange_money', l: '🟠 Orange Money' }, { v: 'mtn', l: '🟡 MTN' }, { v: 'wave', l: '🌊 Wave' }, { v: 'usdt', l: '🪙 USDT' }];
+      return '<div class="config-row" style="flex-direction:column;align-items:stretch;"><div class="cr-info" style="margin-bottom:10px;"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
+        '<div class="checkbox-row">' + methods.map(m => '<label class="checkbox-item ' + (arr.includes(m.v) ? 'checked' : '') + '"><input type="checkbox" ' + (arr.includes(m.v) ? 'checked' : '') + ' onchange="toggleArrayItem(\'' + key + '\', \'' + m.v + '\', this.checked)"> ' + m.l + '</label>').join('') + '</div></div>';
+    }
+
+    if (CHANNEL_KEYS.includes(key)) {
+      const channels = ['@koboofficial', '@koboretrai', '@kobotravail'];
+      const v = String(s.value || '').replace(/"/g, '');
+      return '<div class="config-row" style="flex-direction:column;align-items:stretch;"><div class="cr-info" style="margin-bottom:10px;"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
+        '<select onchange="updateSettingValue(\'' + key + '\', this.value)" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;background:#f7faf8;">' +
+        channels.map(c => '<option value="' + c + '" ' + (v === c ? 'selected' : '') + '>' + c + '</option>').join('') + '</select></div>';
+    }
+
+    if (CHANNELS_ARR.includes(key)) {
+      const arr = Array.isArray(s.value) ? s.value : [];
+      return '<div class="config-row" style="flex-direction:column;align-items:stretch;"><div class="cr-info" style="margin-bottom:10px;"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
+        '<div class="tag-list">' + arr.map((item, i) => {
+          const name = typeof item === 'object' ? (item.name || item.id) : item;
+          return '<span class="tag-item">' + escapeHtml(name) + ' <button type="button" onclick="removeArrayIndex(\'' + key + '\', ' + i + ')">✕</button></span>';
+        }).join('') + '<button type="button" class="tag-add" onclick="addArrayChannel(\'' + key + '\')">➕ Ajouter un canal</button></div></div>';
+    }
+
+    if (NUM_ARR_KEYS.includes(key)) {
+      const arr = Array.isArray(s.value) ? s.value : [];
+      return '<div class="config-row" style="flex-direction:column;align-items:stretch;"><div class="cr-info" style="margin-bottom:10px;"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
+        '<div class="tag-list">' + arr.map((num, i) => '<span class="tag-item"><input type="number" value="' + num + '" onblur="updateArrayIndex(\'' + key + '\', ' + i + ', this.value)"> <button type="button" onclick="removeArrayIndex(\'' + key + '\', ' + i + ')">✕</button></span>').join('') + '<button type="button" class="tag-add" onclick="addArrayNumber(\'' + key + '\')">➕ Ajouter</button></div></div>';
+    }
+
+    return '<div class="config-row"><div class="cr-info"><div class="cr-label">' + desc + '</div><div class="cr-cle">' + key + '</div></div>' +
+      '<input type="text" value=\'' + JSON.stringify(s.value).replace(/'/g, "&#39;") + '\' data-key="' + key + '" class="setting-input" onchange="updateSettingValue(\'' + key + '\', JSON.parse(this.value))"></div>';
+  }).join('');
 }
 
-async function saveAllSettings() {
-  const inputs = document.querySelectorAll('.setting-input');
-  if (inputs.length === 0) return;
-  let ok = 0, err = 0;
-  for (const input of inputs) {
-    let value;
-    try { value = JSON.parse(input.value); } catch { value = input.value; }
-    const r = await apiSend('setting', 'PATCH', { key: input.dataset.key, value });
-    if (r.error) err++; else ok++;
-  }
-  if (err > 0) showToast(`${ok} ok, ${err} erreurs`, true);
-  else showToast(`✅ ${ok} paramètre(s)`);
+async function updateSettingValue(key, value) {
+  const r = await apiSend('setting', 'PATCH', { key, value });
+  if (r.error) return showToast('Erreur : ' + r.error, true);
+  const idx = DATA.settings.findIndex(s => s.key === key);
+  if (idx >= 0) DATA.settings[idx].value = value;
+  showToast('✅ Enregistré');
 }
 
+async function toggleBoolSetting(key, checked) { await updateSettingValue(key, checked); }
+
+async function toggleArrayItem(key, item, checked) {
+  const setting = DATA.settings.find(s => s.key === key);
+  if (!setting) return;
+  let arr = Array.isArray(setting.value) ? setting.value.slice() : [];
+  if (checked && !arr.includes(item)) arr.push(item);
+  if (!checked) arr = arr.filter(x => x !== item);
+  await updateSettingValue(key, arr);
+  renderSettings();
+}
+
+async function addArrayNumber(key) {
+  const v = prompt('Entrer un nombre :');
+  if (!v) return;
+  const setting = DATA.settings.find(s => s.key === key);
+  const arr = Array.isArray(setting.value) ? setting.value.slice() : [];
+  arr.push(Number(v));
+  await updateSettingValue(key, arr);
+  renderSettings();
+}
+
+async function updateArrayIndex(key, index, newVal) {
+  const setting = DATA.settings.find(s => s.key === key);
+  const arr = Array.isArray(setting.value) ? setting.value.slice() : [];
+  arr[index] = Number(newVal);
+  await updateSettingValue(key, arr);
+}
+
+async function removeArrayIndex(key, index) {
+  const setting = DATA.settings.find(s => s.key === key);
+  const arr = Array.isArray(setting.value) ? setting.value.slice() : [];
+  arr.splice(index, 1);
+  await updateSettingValue(key, arr);
+  renderSettings();
+}
+
+async function addArrayChannel(key) {
+  const name = prompt('Nom du canal :');
+  if (!name) return;
+  const id = prompt('ID du canal (ex: @koboofficial) :');
+  if (!id) return;
+  const setting = DATA.settings.find(s => s.key === key);
+  const arr = Array.isArray(setting.value) ? setting.value.slice() : [];
+  arr.push({ id, name, url: 'https://t.me/' + id.replace('@', '') });
+  await updateSettingValue(key, arr);
+  renderSettings();
+}
+
+// ==================== BROADCAST ====================
 function toggleChannelInput() {
   const target = document.getElementById('broadcastTarget').value;
   document.getElementById('channelSelectWrap').style.display = target === 'channel' ? 'block' : 'none';
   if (target !== 'channel') document.getElementById('channelCustomWrap').style.display = 'none';
 }
-
 function toggleCustomChannel() {
   const val = document.getElementById('broadcastChannel').value;
   document.getElementById('channelCustomWrap').style.display = val === 'custom' ? 'block' : 'none';
 }
-
 async function sendBroadcast() {
   const msg = document.getElementById('broadcastMsg').value.trim();
   if (!msg) return showToast('Message vide', true);
@@ -543,32 +690,31 @@ async function sendBroadcast() {
     channelId = sel === 'custom' ? document.getElementById('broadcastChannelCustom').value.trim() : sel;
     if (!channelId) return showToast('Canal requis', true);
   }
-  const label = target === 'channel' ? `le canal ${channelId}` : 'TOUS les utilisateurs';
-  if (!confirm(`Envoyer à ${label} ?`)) return;
+  const label = target === 'channel' ? 'le canal ' + channelId : 'TOUS les utilisateurs';
+  if (!confirm('Envoyer à ' + label + ' ?')) return;
   status.textContent = '⏳ Envoi...';
   try {
     const r = await fetch('/admin/api/admin/broadcast', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: msg, target, channelId }),
     });
     const data = await r.json();
     if (data.ok) {
-      status.textContent = target === 'channel' ? `✅ Envoyé au canal ${channelId}` : `✅ Envoyé à ${data.sent} users (${data.failed} échecs)`;
+      status.textContent = target === 'channel' ? '✅ Envoyé au canal ' + channelId : '✅ Envoyé à ' + data.sent + ' users (' + data.failed + ' échecs)';
       document.getElementById('broadcastMsg').value = '';
-    } else {
-      status.textContent = '❌ ' + (data.error || 'Erreur');
-    }
+    } else status.textContent = '❌ ' + (data.error || 'Erreur');
   } catch (e) { status.textContent = '❌ ' + e.message; }
 }
 
+// ==================== ANNONCEURS ====================
 async function loadAdvertisers() {
-  const r = await fetch('/admin/api/admin/advertisers');
-  const d = await r.json();
-  ADV_DATA = d.advertisers || [];
-  renderAdvertisers();
+  try {
+    const r = await fetch('/admin/api/admin/advertisers');
+    const d = await r.json();
+    ADV_DATA = d.advertisers || [];
+    renderAdvertisers();
+  } catch (e) { console.error(e); }
 }
-
 function renderAdvertisers() {
   const list = document.getElementById('advertisersList');
   if (!list) return;
@@ -576,38 +722,25 @@ function renderAdvertisers() {
   let f = ADV_DATA;
   if (q) f = f.filter(a => (a.name || '').toLowerCase().includes(q) || (a.contact || '').toLowerCase().includes(q));
   if (f.length === 0) { list.innerHTML = emptyBox('Aucun annonceur'); return; }
-  list.innerHTML = f.map(a => `
-    <div class="item-card">
-      <div class="ic-img">🏢</div>
-      <div class="ic-body">
-        <div class="ic-name">${escapeHtml(a.name)} ${a.is_active ? '' : '<span class="badge red">Inactif</span>'}</div>
-        <div class="ic-meta">
-          <span>💰 ${Math.round(a.balance || 0)} Kobo</span>
-          <span class="dot">•</span>
-          <span>Dépensé : ${Math.round(a.total_spent || 0)}</span>
-        </div>
-        ${a.contact ? `<div class="ic-meta" style="font-size:10.5px;">📞 ${escapeHtml(a.contact)}</div>` : ''}
-      </div>
-      <div class="ic-actions">
-        <button class="icon-btn" onclick="creditAdvertiser(${a.id})">💵</button>
-        <button class="icon-btn" onclick="toggleAdvertiser(${a.id}, ${a.is_active})">${a.is_active ? '⏸️' : '▶️'}</button>
-        <button class="icon-btn" onclick="editAdvertiser(${a.id})">✏️</button>
-        <button class="icon-btn" onclick="deleteAdvertiser(${a.id})">🗑️</button>
-      </div>
-    </div>
-  `).join('');
+  list.innerHTML = f.map(a => '<div class="item-card"><div class="ic-img">🏢</div><div class="ic-body">' +
+    '<div class="ic-name">' + escapeHtml(a.name) + ' ' + (a.is_active ? '' : '<span class="badge red">Inactif</span>') + '</div>' +
+    '<div class="ic-meta"><span>💰 ' + Math.round(a.balance || 0) + ' Kobo</span><span class="dot">•</span><span>Dépensé : ' + Math.round(a.total_spent || 0) + '</span></div>' +
+    (a.contact ? '<div class="ic-meta" style="font-size:10.5px;">📞 ' + escapeHtml(a.contact) + '</div>' : '') +
+    '</div><div class="ic-actions">' +
+    '<button class="icon-btn" onclick="creditAdvertiser(' + a.id + ')">💵</button>' +
+    '<button class="icon-btn" onclick="toggleAdvertiser(' + a.id + ', ' + a.is_active + ')">' + (a.is_active ? '⏸️' : '▶️') + '</button>' +
+    '<button class="icon-btn" onclick="editAdvertiser(' + a.id + ')">✏️</button>' +
+    '<button class="icon-btn" onclick="deleteAdvertiser(' + a.id + ')">🗑️</button>' +
+    '</div></div>').join('');
 }
-
 function openAdvertiserModal() {
-  openModal('Nouvel annonceur', `
-    <div class="form-group"><label>Nom</label><input id="advName" placeholder="Ex: Jumia"></div>
-    <div class="form-group"><label>Contact</label><input id="advContact" placeholder="@marque ou +237..."></div>
-    <div class="form-group"><label>Solde initial (Kobo)</label><input type="number" id="advBalance" value="0"></div>
-    <div class="form-check"><input type="checkbox" id="advActive" checked><label>Actif</label></div>
-    <button class="btn-primary" onclick="saveAdvertiser()">💾 Créer</button>
-  `);
+  openModal('Nouvel annonceur',
+    '<div class="form-group"><label>Nom</label><input id="advName" placeholder="Ex: Jumia"></div>' +
+    '<div class="form-group"><label>Contact</label><input id="advContact" placeholder="@marque ou +237..."></div>' +
+    '<div class="form-group"><label>Solde initial (Kobo)</label><input type="number" id="advBalance" value="0"></div>' +
+    '<div class="form-check"><input type="checkbox" id="advActive" checked><label>Actif</label></div>' +
+    '<button class="btn-primary" onclick="saveAdvertiser()">💾 Créer</button>');
 }
-
 async function saveAdvertiser() {
   const payload = {
     name: document.getElementById('advName').value.trim(),
@@ -616,80 +749,45 @@ async function saveAdvertiser() {
     is_active: document.getElementById('advActive').checked,
   };
   if (!payload.name) return showToast('Nom requis', true);
-  const r = await fetch('/admin/api/admin/advertisers', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  const r = await fetch('/admin/api/admin/advertisers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   const d = await r.json();
   if (d.error) return showToast('Erreur : ' + d.error, true);
-  showToast('✅ Créé');
-  closeModal();
-  loadAdvertisers();
+  showToast('✅ Créé'); closeModal(); loadAdvertisers();
 }
-
 function editAdvertiser(id) {
-  const a = ADV_DATA.find(x => x.id === id);
-  if (!a) return;
-  openModal('Modifier ' + a.name, `
-    <div class="form-group"><label>Nom</label><input id="advName" value="${escapeHtml(a.name)}"></div>
-    <div class="form-group"><label>Contact</label><input id="advContact" value="${escapeHtml(a.contact || '')}"></div>
-    <div class="form-group"><label>Solde (Kobo)</label><input type="number" id="advBalance" value="${a.balance}"></div>
-    <div class="form-check"><input type="checkbox" id="advActive" ${a.is_active ? 'checked' : ''}><label>Actif</label></div>
-    <button class="btn-primary" onclick="updateAdvertiser(${id})">💾 Enregistrer</button>
-  `);
+  const a = ADV_DATA.find(x => x.id === id); if (!a) return;
+  openModal('Modifier ' + a.name,
+    '<div class="form-group"><label>Nom</label><input id="advName" value="' + escapeHtml(a.name) + '"></div>' +
+    '<div class="form-group"><label>Contact</label><input id="advContact" value="' + escapeHtml(a.contact || '') + '"></div>' +
+    '<div class="form-group"><label>Solde (Kobo)</label><input type="number" id="advBalance" value="' + a.balance + '"></div>' +
+    '<div class="form-check"><input type="checkbox" id="advActive" ' + (a.is_active ? 'checked' : '') + '><label>Actif</label></div>' +
+    '<button class="btn-primary" onclick="updateAdvertiser(' + id + ')">💾 Enregistrer</button>');
 }
-
 async function updateAdvertiser(id) {
-  const payload = {
-    id,
-    name: document.getElementById('advName').value.trim(),
-    contact: document.getElementById('advContact').value.trim() || null,
-    balance: Number(document.getElementById('advBalance').value),
-    is_active: document.getElementById('advActive').checked,
-  };
-  const r = await fetch('/admin/api/admin/advertisers', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  const payload = { id, name: document.getElementById('advName').value.trim(), contact: document.getElementById('advContact').value.trim() || null, balance: Number(document.getElementById('advBalance').value), is_active: document.getElementById('advActive').checked };
+  const r = await fetch('/admin/api/admin/advertisers', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   const d = await r.json();
   if (d.error) return showToast('Erreur : ' + d.error, true);
-  showToast('✅ Mis à jour');
-  closeModal();
-  loadAdvertisers();
+  showToast('✅ Mis à jour'); closeModal(); loadAdvertisers();
 }
-
 async function creditAdvertiser(id) {
   const v = prompt('Montant à créditer (Kobo) :');
   if (!v) return;
   const a = ADV_DATA.find(x => x.id === id);
-  const newBal = Number(a.balance) + Number(v);
-  await fetch('/admin/api/admin/advertisers', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, balance: newBal }),
-  });
-  showToast(`✅ +${v} Kobo`);
-  loadAdvertisers();
+  await fetch('/admin/api/admin/advertisers', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, balance: Number(a.balance) + Number(v) }) });
+  showToast('✅ +' + v + ' Kobo'); loadAdvertisers();
 }
-
 async function toggleAdvertiser(id, active) {
-  await fetch('/admin/api/admin/advertisers', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, is_active: !active }),
-  });
+  await fetch('/admin/api/admin/advertisers', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_active: !active }) });
   loadAdvertisers();
 }
-
 async function deleteAdvertiser(id) {
-  if (!confirm('Supprimer cet annonceur ?')) return;
-  await fetch(`/admin/api/admin/advertisers?id=${id}`, { method: 'DELETE' });
-  showToast('Supprimé');
-  loadAdvertisers();
+  if (!confirm('Supprimer ?')) return;
+  await fetch('/admin/api/admin/advertisers?id=' + id, { method: 'DELETE' });
+  showToast('Supprimé'); loadAdvertisers();
 }
 
+// ==================== UTILS ====================
 function openModal(title, html) {
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalContent').innerHTML = html;
@@ -698,18 +796,18 @@ function openModal(title, html) {
 }
 function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); document.body.style.overflow = ''; }
 function closeModalOutside(e) { if (e.target.id === 'modalOverlay') closeModal(); }
-function escapeHtml(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function emptyBox(msg) { return `<div class="empty">${msg}</div>`; }
+function escapeHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function emptyBox(msg) { return '<div class="empty">' + msg + '</div>'; }
 function timeAgo(iso) {
   if (!iso) return '—';
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (diff < 60) return 'À l\'instant';
-  if (diff < 3600) return `Il y a ${Math.floor(diff/60)} min`;
-  if (diff < 86400) return `Il y a ${Math.floor(diff/3600)} h`;
-  if (diff < 604800) return `Il y a ${Math.floor(diff/86400)} j`;
+  if (diff < 3600) return 'Il y a ' + Math.floor(diff/60) + ' min';
+  if (diff < 86400) return 'Il y a ' + Math.floor(diff/3600) + ' h';
+  if (diff < 604800) return 'Il y a ' + Math.floor(diff/86400) + ' j';
   return new Date(iso).toLocaleDateString('fr-FR');
 }
-function showToast(msg, isError = false) {
+function showToast(msg, isError) {
   const t = document.getElementById('toast');
   document.getElementById('toastText').textContent = msg;
   t.className = 'toast show' + (isError ? ' error' : '');
