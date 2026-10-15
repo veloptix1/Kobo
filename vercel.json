@@ -1,9 +1,12 @@
 {
   "version": 2,
   "functions": {
-    "api/webhook.js": {
-      "maxDuration": 30,
-      "includeFiles": "api/_lib/**"
-    }
-  }
+    "api/webhook.js": { "maxDuration": 30 },
+    "api/admin/*.js": { "maxDuration": 30 },
+    "api/leekpay/*.js": { "maxDuration": 30 }
+  },
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/admin/:page", "destination": "/admin/:page.html" }
+  ]
 }
