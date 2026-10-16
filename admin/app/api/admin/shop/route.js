@@ -1,71 +1,156 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-async function sendTelegram(userId, message) {
-  const token = process.env.BOT_TOKEN;
-  if (!token) return false;
-  try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: userId, text: message, parse_mode: 'Markdown' }),
-    });
-    return true;
-  } catch (e) { return false; }
-}
-
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const status = searchParams.get('status') || 'pending';
+  const resource = searchParams.get('resource') || 'purchases';
+  const status = searchParams.get('status') || 'all';
 
-  let query = supabaseAdmin
-    .from('kobo_purchases')
-    .select('*, users(first_name, username, telegram_id), kobo_packs(name, icon)')
-    .order('created_at', { ascending: false })
-    .limit(100);
+  try {
+    // ==================== ACHATS DE KOBO ====================
+    if (resource === 'purchases') {
+      let q = supabaseAdmin
+        .from('kobo_purchases')
+        .select('*, users(first_name, username, telegram_id), kobo_packs(name, icon)')
+        .order('created_at', { ascending: false })
+        .limit(200);
 
-  if (status !== 'all') query = query.eq('status', status);
+      if (status !== 'all') q = q.eq('status', status);
 
-  const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      const { data } = await q;
 
-  const { count: pending } = await supabaseAdmin.from('kobo_purchases').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-  const { data: paid } = await supabaseAdmin.from('kobo_purchases').select('amount_paid').eq('status', 'paid');
-  const totalRevenue = (paid || []).reduce((s, p) => s + Number(p.amount_paid || 0), 0);
+      // Stats
+      const { data: all } = await supabaseAdmin
+        .from('kobo_purchases')
+        .select('amount_paid, status, kobo_received, bonus_kobo');
 
-  return NextResponse.json({ ok: true, purchases: data || [], pending: pending || 0, totalRevenue });
+      const paid = (all || []).filter(p => p.status === 'paid');
+      const stats = {
+        total: (all || []).length,
+        paid: paid.length,
+        pending: (all || []).filter(p => p.status === 'pending').length,
+        rejected: (all || []).filter(p => p.status === 'rejected').length,
+        revenue: paid.reduce((s, p) => s + Number(p.amount_paid || 0), 0),
+        kobo_sold: paid.reduce((s, p) => s + Number(p.kobo_received || 0) + Number(p.bonus_kobo || 0), 0),
+      };
+
+      return NextResponse.json({ ok: true, purchases: data || [], stats });
+    }
+
+    // ==================== RECHARGES ====================
+    if (resource === 'recharges') {
+      let q = supabaseAdmin
+        .from('recharges')
+        .select('*, users(first_name, username, telegram_id)')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (status !== 'all') q = q.eq('status', status);
+
+      const { data } = await q;
+
+      const { data: all } = await supabaseAdmin
+        .from('recharges')
+        .select('amount, status');
+
+      const paid = (all || []).filter(r => r.status === 'paid');
+      const stats = {
+        total: (all || []).length,
+        paid: paid.length,
+        pending: (all || []).filter(r => r.status === 'pending').length,
+        rejected: (all || []).filter(r => r.status === 'rejected').length,
+        revenue: paid.reduce((s, r) => s + Number(r.amount || 0), 0),
+      };
+
+      return NextResponse.json({ ok: true, recharges: data || [], stats });
+    }
+
+    // ==================== PACKS ====================
+    if (resource === 'packs') {
+      const { data } = await supabaseAdmin.from('kobo_packs').select('*').order('position');
+      return NextResponse.json({ ok: true, packs: data || [] });
+    }
+
+    return NextResponse.json({ error: 'Unknown resource' }, { status: 400 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
 export async function PATCH(req) {
   const body = await req.json();
-  const { purchaseId, action, reason } = body;
+  const { resource, id, action, ...updates } = body;
 
-  if (!purchaseId || !action) return NextResponse.json({ error: 'purchaseId et action requis' }, { status: 400 });
+  try {
+    // ==================== VALIDER UN ACHAT ====================
+    if (resource === 'purchase' && action === 'approve') {
+      const { data: p } = await supabaseAdmin.from('kobo_purchases').select('*').eq('id', id).single();
+      if (!p) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+      if (p.status === 'paid') return NextResponse.json({ error: 'Déjà payé' }, { status: 400 });
 
-  const { data: p } = await supabaseAdmin.from('kobo_purchases').select('*, kobo_packs(name)').eq('id', purchaseId).single();
-  if (!p) return NextResponse.json({ error: 'Achat introuvable' }, { status: 404 });
+      const totalKobo = Number(p.kobo_received) + Number(p.bonus_kobo || 0);
 
-  if (action === 'approve') {
-    const { data, error } = await supabaseAdmin.rpc('approve_kobo_purchase', { p_purchase_id: purchaseId, p_note: null });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      await supabaseAdmin.rpc('credit_user', {
+        p_user_id: p.user_id,
+        p_amount: totalKobo,
+        p_type: 'kobo_purchase',
+        p_reference: String(p.id),
+        p_metadata: { amount_paid: p.amount_paid, currency: p.currency, admin: true },
+      });
 
-    await sendTelegram(p.user_id,
-      `✅ *Achat de Kobo validé !*\n\n📦 Pack : ${p.kobo_packs?.name || 'Pack'}\n🪙 Kobo reçus : *${data.kobo_total}*\n\n🎉 Bon jeu !`
-    );
+      await supabaseAdmin.from('kobo_purchases').update({ status: 'paid', processed_at: new Date().toISOString() }).eq('id', id);
+      return NextResponse.json({ ok: true, kobo: totalKobo });
+    }
 
-    return NextResponse.json({ ok: true });
+    // ==================== REJETER UN ACHAT ====================
+    if (resource === 'purchase' && action === 'reject') {
+      await supabaseAdmin.from('kobo_purchases').update({ status: 'rejected', admin_note: body.reason || 'Admin', processed_at: new Date().toISOString() }).eq('id', id);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==================== VALIDER UNE RECHARGE ====================
+    if (resource === 'recharge' && action === 'approve') {
+      const { data: r } = await supabaseAdmin.from('recharges').select('*').eq('id', id).single();
+      if (!r) return NextResponse.json({ error: 'Introuvable' }, { status: 404 });
+      if (r.status === 'paid') return NextResponse.json({ error: 'Déjà payé' }, { status: 400 });
+
+      const { data: u } = await supabaseAdmin.from('users').select('real_balance').eq('telegram_id', r.user_id).single();
+      await supabaseAdmin.from('users').update({ real_balance: Number(u?.real_balance || 0) + Number(r.amount) }).eq('telegram_id', r.user_id);
+
+      await supabaseAdmin.from('recharges').update({ status: 'paid', processed_at: new Date().toISOString() }).eq('id', id);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==================== REJETER UNE RECHARGE ====================
+    if (resource === 'recharge' && action === 'reject') {
+      await supabaseAdmin.from('recharges').update({ status: 'rejected', admin_note: body.reason || 'Admin', processed_at: new Date().toISOString() }).eq('id', id);
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==================== MODIFIER UN PACK ====================
+    if (resource === 'pack') {
+      const { error } = await supabaseAdmin.from('kobo_packs').update(updates).eq('id', id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
+
+    // ==================== CRÉER UN PACK ====================
+    if (resource === 'pack_create') {
+      const { data, error } = await supabaseAdmin.from('kobo_packs').insert(updates).select().single();
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true, pack: data });
+    }
+
+    // ==================== SUPPRIMER UN PACK ====================
+    if (resource === 'pack_delete') {
+      await supabaseAdmin.from('kobo_packs').update({ is_active: false }).eq('id', id);
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  if (action === 'reject') {
-    const { error } = await supabaseAdmin.rpc('reject_kobo_purchase', { p_purchase_id: purchaseId, p_note: reason || 'Non conforme' });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-    await sendTelegram(p.user_id,
-      `❌ *Achat de Kobo refusé*\n\n${reason ? `📝 Motif : ${reason}\n\n` : ''}Tu peux réessayer.`
-    );
-
-    return NextResponse.json({ ok: true });
-  }
-
-  return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
 }
